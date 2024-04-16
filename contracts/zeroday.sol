@@ -1,8 +1,16 @@
-// SPDX-License-Identifier: MIT
-// Dev  Soheil Vafaei 
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 
-pragma solidity ^0.8.19;
+contract Rocket {
+    string public name;
+    string public status;
 
-contract zeroDay{
+    constructor(string memory _name) {
+        name = _name;
+        status = "ignition";
+    }
 
+    function launch() public {
+        status = "lift-off";
+    }
 }
