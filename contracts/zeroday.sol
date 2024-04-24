@@ -1188,10 +1188,14 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
     bool public publicMintStatus = true;
 
     // max total supply
-    uint256 private MAX_SUPPLY = 10000;
+    uint256 private MAX_SUPPLY = 9983;
 
     // The maximum amount you can do in one transaction minting
     uint256 public allowedAmountMax = 4;
+
+    // for reveal option in metadata
+    bool private revealed = false;
+    string private revealURI = "https://***.com/upload/nft/notRevealed.json";
 
     uint256 public constant PRICE_PUBLIC = 0.05 ether;
 
@@ -1217,8 +1221,9 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
     // function setWhitelist
     // fucntion getWhitelist
 
-    // function setRevealStatus
-    // function getRevealStatus
+    function RevealedCollection () public onlyOwner {
+        revealed = true;
+    }
 
     function withdrawAll() public onlyOwner {
         uint256 balance = address(this).balance;
@@ -1271,7 +1276,11 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
         override(ERC721, ERC721URIStorage)
         returns (string memory)
     {
+        if (revealed == true){
         return super.tokenURI(tokenId);
+        }else {
+            return revealURI;
+        }
     }
 
     function totalSupply() public view returns (uint256) {
