@@ -1188,7 +1188,7 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
     bool public publicMintStatus = true;
 
     // max total supply
-    uint256 private MAX_SUPPLY = 10000;
+    uint256 private MAX_SUPPLY = 9983;
 
     // The maximum amount you can do in one transaction minting
     uint256 public allowedAmountMax = 4;
