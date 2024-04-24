@@ -582,7 +582,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
     using Strings for uint256;
 
     // all token uris
-    string baseURI_ = "https://***.com/upload/nft/";
+    string baseURI_ = "https://api.mgnzeroday.com/uri/";
 
     uint256 internal mintCounter;
 
@@ -1195,7 +1195,7 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
 
     // for reveal option in metadata
     bool private revealed = false;
-    string private revealURI = "https://***.com/upload/nft/notRevealed.json";
+    string private revealURI = "https://emerald-solid-lamprey-464.mypinata.cloud/ipfs/QmZLt8rgHW8HJyRSdCyLXZPpGVaFATJMyYefYHJASsnBr7";
 
     uint256 public constant PRICE_PUBLIC = 0.05 ether;
 
