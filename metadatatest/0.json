@@ -1,0 +1,12 @@
+{
+    "index": 1,
+    "description": "testCollection",
+    "image": "https://dweb.link/ipfs/QmRP6AHg8tsLrXFkW7U4uy7gHH85DnbSrhKdqw4ewGmoKU",
+    "name": "test Item",
+    "attributes": [
+        {
+            "trait_type": "test",
+            "value": "acceptable"
+        }
+    ]
+}
