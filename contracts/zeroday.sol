@@ -885,7 +885,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer.
      *
      * Emits a {Transfer} event.
-     */
+     */ 
     function _safeMint(address to, uint256 tokenId) internal virtual {
         _safeMint(to, tokenId, "");
     }
