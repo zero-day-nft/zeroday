@@ -328,6 +328,7 @@ pragma solidity ^0.8.0;
  * queried by others ({ERC165Checker}).
  *
  * For an implementation, see {ERC165}.
+ @audit-info analyzing
  */
 interface IERC165 {
     /**
@@ -1199,6 +1200,7 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
 
     uint256 public constant PRICE_PUBLIC = 0.05 ether;
 
+    // @audit-info (gas) use pre-defined name ans symbol to avoid using stack.
     constructor(string memory _name, string memory _symbol, address _owner)
         ERC721(_name, _symbol) Ownable(_owner)
     {}
@@ -1209,7 +1211,7 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
         _;
     }
 
-
+    // @audit-info what if _st == publicMintStatus -> useless call -> useless-gas-consumed
     function setPublicMintStatus(bool _st) public onlyOwner {
         publicMintStatus = _st;
     }
@@ -1226,6 +1228,7 @@ contract  ZeroDay is ERC721, ERC721URIStorage, Ownable {
     }
 
     function withdrawAll() public onlyOwner {
+        // @audit (critic) vulnerable to ETH-mishandling attack.
         uint256 balance = address(this).balance;
         require(balance > 0);
 
