@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 // import { Math } from "@openzeppelin/contracts/"
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -14,6 +15,9 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IZeroDay } from "./interfaces/IZeroDay.sol";
+
+// @audit-info should be terminated.
+import { console } from "forge-std/console.sol";
 
 /// @notice when caller of the whitelist function is not included in whitelist.
 error ZeroDay__UserNotIncludedInWhiteList(address user);
@@ -33,6 +37,8 @@ error ZeroDay__tokenIdHasNotMinted(uint256 tokenId);
 error ZeroDay__RevealDateNotReached();
 /// @notice change pre-sale status in an unappropriate time.
 error ZeroDay__PreSaleDateNotReached();
+/// @notice change phase to public sale in an unappropriate time.
+error ZeroDay__PublicSaleDateNotReached();
 /// @notice when an unappropriate function will call in a wrong time.
 error ZeroDay__WeAreNotInThisPhase();
 /// @notice when msg.value be less than the nft minting price.
@@ -53,6 +59,7 @@ error ZeroDay__notSufficientBalanceToMint();
 /// @notice ZeroDay NFT collection
 /// #add a brief explanation about this collection.
 contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Burnable*/ {
+    using Strings for uint256;
     /*///////////////////////////////////////////////////////////////
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
@@ -80,15 +87,15 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice is the root-hash of merkle tree which calculated off-chain.
     bytes32 private s_merkleRoot;
 
-    bool private revealed;
     bool private preSaled;
+    bool private revealed;
     bool private publicSaled;
 
     /*///////////////////////////////////////////////////////////////
                                MAPPINGS
     //////////////////////////////////////////////////////////////*/
     mapping(address minter => bool included) private s_whiteListClaimed;
-    mapping(uint256 tokenId => string tokenURI) private s_tokenIdToTokenURI;
+    mapping(uint256 tokenId => string ipfs_hash) private s_tokenIdToTokenURI;
 
     event MintedInWhiteList(address minter);
     event phaseChanged(PHASE phase);
@@ -112,7 +119,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         i_startRevealDate = _startRevealDate;
         s_merkleRoot = _merkle_root;
         // initial phase
-        collection_phase = PHASE.NOT_STARTED;
+        collection_phase = PHASE.PRE_SALE;
         totalMinted = 0;
     }
 
@@ -183,6 +190,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     /// @notice this function is callable in public sale phase.
     /// @param _tokenURI is the ipfs hash which contains the NFT metadata.
+    /// Invariant: the tokenId is always less than COLLECTION_MAX_SUPPLY.
     function mintNFT(string memory _tokenURI)
         public
         payable
@@ -191,10 +199,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         isLessThanMaxSupply
     {
         require(bytes(_tokenURI).length != 0, "ZeroDay__InvalidTokenURI");
-
-        // if (msg.value < PUBLIC_SALE_PRICE) {
-        //     revert ZeroDay__notSufficientBalanceToMint();
-        // }
 
         uint256 lastCounter = totalSupply() + 1;
         s_tokenIdToTokenURI[lastCounter] = _tokenURI;
@@ -207,14 +211,13 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
 
 
-    function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.NOT_STARTED) {
+    function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!preSaled, "ZeroDay__preSaledBefore");
 
-        if (!(timeStamp() < i_startPreSaleDate)) {
+        if (!(timeStamp() >= i_startPreSaleDate && timeStamp() < i_startRevealDate)) {
             revert ZeroDay__PreSaleDateNotReached();
         }
         preSaled = true;
-        collection_phase = PHASE.PRE_SALE;
 
         emit phaseChanged(PHASE.PRE_SALE);
     }
@@ -223,7 +226,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     function startReveal() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!revealed, "ZeroDay__ReevaledBefore");
 
-        if (!(timeStamp() <= i_startRevealDate)) {
+        if (!(timeStamp() >= i_startRevealDate && timeStamp() < i_startPublicSaleDate)) {
             revert ZeroDay__RevealDateNotReached();
         }
         revealed = true;
@@ -237,6 +240,9 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     function startPublicSale() external onlyOwner shouldBeInThePhaseOf(PHASE.REVEAL) {
         require(!publicSaled, "ZeroDay__publicSaledBefore");
 
+        if (!(timeStamp() >= i_startPublicSaleDate)) {
+            revert ZeroDay__PublicSaleDateNotReached();
+        }
         publicSaled = true;
         collection_phase = PHASE.PUBLIC_SALE;
 
@@ -258,7 +264,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         if (bytes(ipfs_hash).length == 0) {
             revert ZeroDay__tokenIdHasNotMinted(_tokenId);
         }
-        return string(abi.encodePacked(_baseURI(), ipfs_hash, "/", _tokenId));
+
+        return string(abi.encodePacked(_baseURI(), ipfs_hash, "/", _tokenId.toString()));
     }
 
     function getTokenURI(uint256 _tokenId) public view returns (string memory) {
@@ -283,5 +290,15 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     function timeStamp() private view returns (uint32) {
         return uint32(block.timestamp);
+    }
+
+    function getRevealed() public view returns(bool) {
+        return revealed;
+    }
+    function getPreSaled() public view returns(bool) {
+        return preSaled;
+    }
+    function getPublicSaled() public view returns(bool) {
+        return publicSaled;
     }
 }
