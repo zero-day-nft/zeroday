@@ -1,55 +1,65 @@
 // // SPDX-License-Identifier: MIT
 // pragma solidity ^0.8.19;
 
-// import {Script, console} from "forge-std/Script.sol";
-// import {DevOpsTools} from "foundry-devops/src/DevOpsTools.sol";
-// import {BasicNft} from "../src/BasicNft.sol";
-// import {MoodNft} from "../src/MoodNft.sol";
+// import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
+// import { Script } from "forge-std/Script.sol";
+// import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 
-// contract MintBasicNft is Script {
-//     string public constant PUG_URI =
-//         "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
-//     uint256 deployerKey;
+// contract HelperConfig is Script {
+//     NetworkConfig public activeNetworkConfig;
 
-//     function run() external {
-//         address mostRecentlyDeployedBasicNft = DevOpsTools
-//             .get_most_recent_deployment("BasicNft", block.chainid);
-//         mintNftOnContract(mostRecentlyDeployedBasicNft);
+//     uint8 public constant DECIMALS = 8;
+//     int256 public constant ETH_USD_PRICE = 2000e8;
+//     int256 public constant BTC_USD_PRICE = 1000e8;
+
+//     struct NetworkConfig {
+//         address wethUsdPriceFeed;
+//         address wbtcUsdPriceFeed;
+//         address weth;
+//         address wbtc;
+//         uint256 deployerKey;
 //     }
 
-//     function mintNftOnContract(address basicNftAddress) public {
+//     uint256 public DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+
+//     constructor() {
+//         if (block.chainid == 11_155_111) {
+//             activeNetworkConfig = getSepoliaEthConfig();
+//         } else {
+//             activeNetworkConfig = getOrCreateAnvilEthConfig();
+//         }
+//     }
+
+//     function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
+//         sepoliaNetworkConfig = NetworkConfig({
+//             wethUsdPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306, // ETH / USD
+//             wbtcUsdPriceFeed: 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43,
+//             weth: 0xdd13E55209Fd76AfE204dBda4007C227904f0a81,
+//             wbtc: 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063,
+//             deployerKey: vm.envUint("PRIVATE_KEY")
+//         });
+//     }
+
+//     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilNetworkConfig) {
+//         // Check to see if we set an active network config
+//         if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
+//             return activeNetworkConfig;
+//         }
+
 //         vm.startBroadcast();
-//         BasicNft(basicNftAddress).mintNft(PUG_URI);
+//         MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
+//         ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e8);
+
+//         MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, BTC_USD_PRICE);
+//         ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1000e8);
 //         vm.stopBroadcast();
-//     }
-// }
 
-// contract MintMoodNft is Script {
-//     function run() external {
-//         address mostRecentlyDeployedBasicNft = DevOpsTools
-//             .get_most_recent_deployment("MoodNft", block.chainid);
-//         mintNftOnContract(mostRecentlyDeployedBasicNft);
-//     }
-
-//     function mintNftOnContract(address moodNftAddress) public {
-//         vm.startBroadcast();
-//         MoodNft(moodNftAddress).mintNft();
-//         vm.stopBroadcast();
-//     }
-// }
-
-// contract FlipMoodNft is Script {
-//     uint256 public constant TOKEN_ID_TO_FLIP = 0;
-
-//     function run() external {
-//         address mostRecentlyDeployedBasicNft = DevOpsTools
-//             .get_most_recent_deployment("MoodNft", block.chainid);
-//         flipMoodNft(mostRecentlyDeployedBasicNft);
-//     }
-
-//     function flipMoodNft(address moodNftAddress) public {
-//         vm.startBroadcast();
-//         MoodNft(moodNftAddress).flipMood(TOKEN_ID_TO_FLIP);
-//         vm.stopBroadcast();
+//         anvilNetworkConfig = NetworkConfig({
+//             wethUsdPriceFeed: address(ethUsdPriceFeed), // ETH / USD
+//             weth: address(wethMock),
+//             wbtcUsdPriceFeed: address(btcUsdPriceFeed),
+//             wbtc: address(wbtcMock),
+//             deployerKey: DEFAULT_ANVIL_PRIVATE_KEY
+//         });
 //     }
 // }

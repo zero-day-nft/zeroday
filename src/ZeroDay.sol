@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 // import { Math } from "@openzeppelin/contracts/"
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -14,10 +14,10 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import { IZeroDay } from "./interfaces/IZeroDay.sol";
+import {IZeroDay} from "./interfaces/IZeroDay.sol";
 
 // @audit-info should be terminated.
-import { console } from "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 /// @notice when caller of the whitelist function is not included in whitelist.
 error ZeroDay__UserNotIncludedInWhiteList(address user);
@@ -63,11 +63,12 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /*///////////////////////////////////////////////////////////////
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
-    uint16 private constant COLLECTION_MAX_SUPPLY = 9983;
+
+    uint256 public constant COLLECTION_MAX_SUPPLY = 9983;
     // @audit-info this should change based on the team decission.
-    uint256 private constant WHITELIST_PRICE = 0.5 ether;
+    uint256 public constant WHITELIST_PRICE = 0.5 ether;
     // @audit-info this sould change based on the team decission.
-    uint256 private constant PUBLIC_SALE_PRICE = 1 ether;
+    uint256 public constant PUBLIC_SALE_PRICE = 1 ether;
 
     // @audit-info we should define these values seperately based on the team plan.
     /// @notice is the price of NFTs in pre-sale phase.
@@ -193,7 +194,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// Invariant: the tokenId is always less than COLLECTION_MAX_SUPPLY.
     function mintNFT(string memory _tokenURI)
         public
-        payable
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PUBLIC_SALE)
         isLessThanMaxSupply
@@ -208,8 +208,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         }
         _safeMint(msg.sender, lastCounter);
     }
-
-
 
     function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!preSaled, "ZeroDay__preSaledBefore");
@@ -288,17 +286,20 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         return collection_phase;
     }
 
+    /// @notice there is no time-overflow until 2106 AC.
     function timeStamp() private view returns (uint32) {
         return uint32(block.timestamp);
     }
 
-    function getRevealed() public view returns(bool) {
+    function getRevealed() public view returns (bool) {
         return revealed;
     }
-    function getPreSaled() public view returns(bool) {
+
+    function getPreSaled() public view returns (bool) {
         return preSaled;
     }
-    function getPublicSaled() public view returns(bool) {
+
+    function getPublicSaled() public view returns (bool) {
         return publicSaled;
     }
 }

@@ -6,60 +6,54 @@ import { StdInvariant } from "forge-std/StdInvariant.sol";
 import { console } from "forge-std/console.sol";
 import { ZeroDay } from "../../src/ZeroDay.sol";
 import { IZeroDay } from "../../src/interfaces/IZeroDay.sol";
-import { InvariantInUse } from "./InvariantInUse.sol";
 
 /// Invariants in contract:
 /// @notice nft counter value should always less than totalSupply. 
-contract InvarianTesting is StdInvariant, Test, IZeroDay {
+contract InvariantInUse is StdInvariant, Test, IZeroDay {
     string public tokenURIHash = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
     ZeroDay public nft;
-    uint256 public constant init_pre_sale_price_example = 1 ether;
-    uint256 public constant start_pre_sale_date_example = 1716718200; // Sunday, May 26, 2024 10:10:00 AM
-    uint256 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
-    uint256 public constant start_public_sale_date_example =  1717063800; //Thursday, May 30, 2024 10:10:00 AM
 
     address owner = address(this);
     address publicSaleMinter = makeAddr("publicSaleMinter");
 
     bytes32 public merkleRoot;
-
-    InvariantInUse public handler;
-
-    function setUp() public {
+    constructor(
+        uint256 init_pre_sale_price,
+        uint256 startPreSaleDate,
+        uint256 startRevealDate,
+        uint256 startPublicSaleDa,
+        bytes32 _merkleRoot
+    ) 
+    {
         merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
 
         vm.startPrank(owner);
         nft = new ZeroDay(
-            init_pre_sale_price_example,
-            start_pre_sale_date_example,
-            start_reveal_date_example,
-            start_public_sale_date_example,
-            merkleRoot
+            init_pre_sale_price,
+            startPreSaleDate,
+            startRevealDate,
+            startPublicSaleDa,
+            _merkleRoot
         );
         vm.stopPrank();
-
-        handler = new InvariantInUse(
-            init_pre_sale_price_example,
-            start_pre_sale_date_example,
-            start_reveal_date_example,
-            start_public_sale_date_example,
-            merkleRoot
-        );
-        targetContract(address(handler));
     }
-    // #bug season management issue.
-    function check_invariant_tokenIdCounterShouldAlwaysBeLessThanTotalSupply() 
+
+
+    function mintNFTInPublicSalePhase(uint256 mintingTimes)
         public
         changePhaseTo(PHASE.PUBLIC_SALE, true)
     {
-        vm.startPrank(publicSaleMinter);
-        nft.mintNFT(tokenURIHash);
-        vm.stopPrank();
+        // Exceedable from collection max supply which is `9983`
+        uint256 max_times = 10000;
+        mintingTimes = bound(mintingTimes, 1, max_times);
 
-        uint256 maxSupply = 9983;
-        uint256 tokenCounter = nft.totalSupply();
-
-        assertGe(maxSupply, tokenCounter);
+        for (uint256 i = 0; i < mintingTimes; i++) {
+            if (i > max_times) vm.expectRevert();
+            
+            vm.startPrank(publicSaleMinter);
+            nft.mintNFT(tokenURIHash);
+            vm.stopPrank();
+        }
     }
 
     modifier changePhaseTo(PHASE _phase, bool _after) {

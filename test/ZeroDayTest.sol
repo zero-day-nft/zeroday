@@ -19,8 +19,10 @@ contract ZeroDayTest is Test, IZeroDay {
     address publicSaleMinter = makeAddr("publicSaleMinter");
     address invalidCaller = makeAddr("invalidCaller");
 
+    bytes32 merkleRoot;
+
     function setUp() public {
-        bytes32 merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
+        merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
 
         vm.startPrank(owner);
         nft = new ZeroDay(
@@ -125,7 +127,9 @@ contract ZeroDayTest is Test, IZeroDay {
     /*///////////////////////////////////////////////////////////////
                             CHANGE PHASE
     //////////////////////////////////////////////////////////////*/
-    function testStartPreSaleWithValidTimeRange() public /*changePhaseTo(PHASE.PRE_SALE, false)*/ {
+    function testStartPreSaleWithValidTimeRange() 
+    public 
+    /*changePhaseTo(PHASE.PRE_SALE, false)*/ {
         vm.startPrank(owner);
         vm.warp(nft.i_startPreSaleDate() + 10 seconds);
         nft.startPreSale();
@@ -138,19 +142,25 @@ contract ZeroDayTest is Test, IZeroDay {
         assertEq(getStatus(), "PRE_SALE");
     }
 
-    function testFailStartPreSaleWithInvalidCaller() public changePhaseTo(PHASE.NOT_STARTED, false) {
+    function testFailStartPreSaleWithInvalidCaller() 
+    public 
+    changePhaseTo(PHASE.NOT_STARTED, false) {
         vm.startPrank(invalidCaller);
         nft.startPreSale();
         vm.stopPrank();
     }
 
-    function testFailStartPreSaleWithInValidTimeRange() public changePhaseTo(PHASE.PRE_SALE, true) {
+    function testFailStartPreSaleWithInValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PRE_SALE, true) {
         vm.startPrank(owner);
         nft.startPreSale();
         vm.stopPrank();
     }
 
-    function testFailStartPreSaleForSecondTimeWithValidTimeRange() public changePhaseTo(PHASE.NOT_STARTED, false) {
+    function testFailStartPreSaleForSecondTimeWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.NOT_STARTED, false) {
         vm.startPrank(owner);
         nft.startPreSale();
         nft.startPreSale();
@@ -158,7 +168,9 @@ contract ZeroDayTest is Test, IZeroDay {
     }
 
     /// @notice test startRevealSale functionality
-    function testStartRevealWithValidTimeRange() public changePhaseTo(PHASE.REVEAL, false) {
+    function testStartRevealWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.REVEAL, false) {
         vm.startPrank(owner);
         nft.startReveal();
         vm.stopPrank();
@@ -170,34 +182,44 @@ contract ZeroDayTest is Test, IZeroDay {
         assertEq(getStatus(), "REVEAL");
     }
 
-    function testFailStartRevealWithInvlidCallerWithValidTimeRange() public changePhaseTo(PHASE.REVEAL, false) {
+    function testFailStartRevealWithInvlidCallerWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.REVEAL, false) {
         vm.startPrank(invalidCaller);
         nft.startReveal();
         nft.startReveal();
         vm.stopPrank();
     }    
 
-    function testFailStartRevealTwiceWithValidTimeRange() public changePhaseTo(PHASE.REVEAL, false) {
+    function testFailStartRevealTwiceWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.REVEAL, false) {
         vm.startPrank(owner);
         nft.startReveal();
         nft.startReveal();
         vm.stopPrank();
     }
 
-    function testFailStartRevealWithInvalidTimeRange() public changePhaseTo(PHASE.PRE_SALE, false) {
+    function testFailStartRevealWithInvalidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PRE_SALE, false) {
         vm.startPrank(owner);
         nft.startReveal();
         vm.stopPrank();
     }
 
-    function testFailStartRevealWithInvalidTimeRange2() public changePhaseTo(PHASE.PUBLIC_SALE, false) {
+    function testFailStartRevealWithInvalidTimeRange2() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, false) {
         vm.startPrank(owner);
         nft.startReveal();
         vm.stopPrank();
     }
 
     /// @notice test startPublicSale functionality
-    function testStartPublicSaleWithValidTimeRange() public changePhaseTo(PHASE.PUBLIC_SALE, false) {
+    function testStartPublicSaleWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, false) {
         vm.startPrank(owner);
         nft.startPublicSale();
         vm.stopPrank();
@@ -209,25 +231,33 @@ contract ZeroDayTest is Test, IZeroDay {
         assertEq(getStatus(), "PUBLIC_SALE");
     }
 
-    function testFailStartPublicWithInvalidCallerWithValidTimeRange() public changePhaseTo(PHASE.PUBLIC_SALE, false) {
+    function testFailStartPublicWithInvalidCallerWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, false) {
         vm.startPrank(invalidCaller);
         nft.startPublicSale();
         vm.stopPrank();
     }
 
-    function testFailStartPublicSaleWithInvalidTimeRange() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+    function testFailStartPublicSaleWithInvalidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, true) {
         vm.startPrank(owner);
         nft.startPublicSale();
         vm.stopPrank();
     }
 
-    function testFailStartPublicSaleWithInvalidTimeRange2() public changePhaseTo(PHASE.REVEAL, true) {
+    function testFailStartPublicSaleWithInvalidTimeRange2() 
+    public 
+    changePhaseTo(PHASE.REVEAL, true) {
         vm.startPrank(owner);
         nft.startPublicSale();
         vm.stopPrank();
     }
 
-    function testFailStartPublicSaleTwiceWithValidTimeRange() public changePhaseTo(PHASE.PUBLIC_SALE, false) {
+    function testFailStartPublicSaleTwiceWithValidTimeRange() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, false) {
         vm.startPrank(owner);
         nft.startPublicSale();
         nft.startPublicSale();
@@ -237,7 +267,9 @@ contract ZeroDayTest is Test, IZeroDay {
     /*///////////////////////////////////////////////////////////////
                             TOKEN URI
     //////////////////////////////////////////////////////////////*/
-    function testTokenURIOutput() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+    function testTokenURIOutput() 
+    public 
+    changePhaseTo(PHASE.PUBLIC_SALE, true) {
         string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
 
         vm.startPrank(publicSaleMinter);
