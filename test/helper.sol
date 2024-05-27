@@ -12,22 +12,22 @@ abstract contract helper is Test, IZeroDay {
         vm.startPrank(caller);
 
         if (_phase == PHASE.PRE_SALE) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
         } else if (_phase == PHASE.REVEAL) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
 
-            vm.warp(nft.i_startRevealDate() + 10 seconds);
+            vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
         } else if (_phase == PHASE.PUBLIC_SALE) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
 
-            vm.warp(nft.i_startRevealDate() + 10 seconds);
+            vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
 
-            vm.warp(nft.i_startPublicSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
             nft.startPublicSale();
         }
 

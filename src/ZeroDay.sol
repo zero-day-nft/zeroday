@@ -63,7 +63,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /*///////////////////////////////////////////////////////////////
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
-
     uint256 public constant COLLECTION_MAX_SUPPLY = 9983;
     // @audit-info this should change based on the team decission.
     uint256 public constant WHITELIST_PRICE = 0.5 ether;
@@ -71,14 +70,15 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     uint256 public constant PUBLIC_SALE_PRICE = 1 ether;
 
     // @audit-info we should define these values seperately based on the team plan.
+    // @audit-info should be changeable.
     /// @notice is the price of NFTs in pre-sale phase.
-    uint256 public immutable i_init_pre_sale_price;
+    uint256 public immutable init_pre_sale_price;
     /// @notice is the date in block.timestamp which pre-sale phase starts.
-    uint256 public immutable i_startPreSaleDate;
+    uint256 private startPreSaleDate;
     /// @notice is the data that collection reveal will occurr.
-    uint256 public immutable i_startRevealDate;
+    uint256 private startRevealDate;
     /// @notice is the date in block.timestamp which public-sale phase starts.
-    uint256 public immutable i_startPublicSaleDate;
+    uint256 private startPublicSaleDate;
 
     /// @notice is the current phase that we are in, based on PHASE enum.
 
@@ -114,10 +114,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         uint256 _startPublicSaleDate,
         bytes32 _merkle_root
     ) ERC721("ZeroDay", "ZERO") Ownable(msg.sender) {
-        i_init_pre_sale_price = _init_pre_sale_price;
-        i_startPreSaleDate = _startPreSaleDate;
-        i_startPublicSaleDate = _startPublicSaleDate;
-        i_startRevealDate = _startRevealDate;
+        init_pre_sale_price = _init_pre_sale_price;
+        startPreSaleDate = _startPreSaleDate;
+            startPublicSaleDate = _startPublicSaleDate;
+        startRevealDate = _startRevealDate;
         s_merkleRoot = _merkle_root;
         // initial phase
         collection_phase = PHASE.PRE_SALE;
@@ -209,10 +209,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         _safeMint(msg.sender, lastCounter);
     }
 
+    // @audit-info implementing Chainlink Automation for reveal event.
     function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!preSaled, "ZeroDay__preSaledBefore");
 
-        if (!(timeStamp() >= i_startPreSaleDate && timeStamp() < i_startRevealDate)) {
+        if (!(timeStamp() >= startPreSaleDate && timeStamp() < startRevealDate)) {
             revert ZeroDay__PreSaleDateNotReached();
         }
         preSaled = true;
@@ -220,11 +221,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         emit phaseChanged(PHASE.PRE_SALE);
     }
 
-    // @audit-info implementing Chainlink Automation for reveal event.
     function startReveal() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!revealed, "ZeroDay__ReevaledBefore");
 
-        if (!(timeStamp() >= i_startRevealDate && timeStamp() < i_startPublicSaleDate)) {
+        if (!(timeStamp() >= startRevealDate && timeStamp() <   startPublicSaleDate)) {
             revert ZeroDay__RevealDateNotReached();
         }
         revealed = true;
@@ -238,7 +238,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     function startPublicSale() external onlyOwner shouldBeInThePhaseOf(PHASE.REVEAL) {
         require(!publicSaled, "ZeroDay__publicSaledBefore");
 
-        if (!(timeStamp() >= i_startPublicSaleDate)) {
+        if (!(timeStamp() >=    startPublicSaleDate)) {
             revert ZeroDay__PublicSaleDateNotReached();
         }
         publicSaled = true;
@@ -301,5 +301,15 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     function getPublicSaled() public view returns (bool) {
         return publicSaled;
+    }
+    
+    function getStartPreSaleDate() public view returns(uint256) {
+        return startPreSaleDate;
+    }
+    function getStartRevealDate() public view returns(uint256) {
+        return startRevealDate;
+    }
+    function getStartPublicSaleDate() public view returns(uint256) {
+        return startPublicSaleDate;
     }
 }

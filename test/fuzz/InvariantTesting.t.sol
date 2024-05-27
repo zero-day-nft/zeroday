@@ -66,31 +66,31 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
         vm.startPrank(owner);
 
         if (_phase == PHASE.PRE_SALE) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
             
         } else if (_phase == PHASE.REVEAL) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
 
-            vm.warp(nft.i_startRevealDate() + 10 seconds);
+            vm.warp(nft.getStartRevealDate() + 10 seconds);
             if (_after) {
                 console.log("Should be reveal: ", getStatus());
                 nft.startReveal();
             }
             
         } else if (_phase == PHASE.PUBLIC_SALE) {
-            vm.warp(nft.i_startPreSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
             console.log("should be pre-sale: ", getStatus());
 
-            vm.warp(nft.i_startRevealDate() + 10 seconds);
+            vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
             console.log("Should be reveal: ", getStatus());
 
-            vm.warp(nft.i_startPublicSaleDate() + 10 seconds);
+            vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
             if (_after) {
                 nft.startPublicSale();
                 console.log("Should be public-sale: ", getStatus());
