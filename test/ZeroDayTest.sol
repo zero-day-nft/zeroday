@@ -9,10 +9,12 @@ import { helper } from "./helper.sol";
 
 contract ZeroDayTest is Test, IZeroDay {
     ZeroDay public nft;
+    /// NOTE: these are test values.
     uint256 public constant init_pre_sale_price_example = 1 ether;
     uint256 public constant start_pre_sale_date_example = 1716718200; // Sunday, May 26, 2024 10:10:00 AM
     uint256 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
     uint256 public constant start_public_sale_date_example =  1717063800; //Thursday, May 30, 2024 10:10:00 AM
+    uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
 
     address owner = address(this);
     address whitelistValidMinter = makeAddr("whitelistValidMinter");
@@ -108,8 +110,10 @@ contract ZeroDayTest is Test, IZeroDay {
     function testMintNFTWithValidPhase() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
         console.log(getStatus());
         string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        
         vm.startPrank(publicSaleMinter);
-        nft.mintNFT(testTokenURI);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
         vm.stopPrank();
 
         assertEq(nft.totalSupply(), 1);
@@ -119,7 +123,19 @@ contract ZeroDayTest is Test, IZeroDay {
     function testFailMintNFTWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
         string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
         vm.startPrank(publicSaleMinter);
-        nft.mintNFT(testTokenURI);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        vm.stopPrank();
+    }
+
+    function testFailMintNFTWithInsufficientBalanceWithValidPhase()
+        public
+        changePhaseTo(PHASE.PUBLIC_SALE, true)
+    {
+        string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 0.99 ether);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
         vm.stopPrank();
     }
 
@@ -273,8 +289,11 @@ contract ZeroDayTest is Test, IZeroDay {
         string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
 
         vm.startPrank(publicSaleMinter);
-        nft.mintNFT(testTokenURI);
-        nft.mintNFT(testTokenURI);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+
+        vm.deal(publicSaleMinter, 1 ether + 1 wei);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
         vm.stopPrank();
 
         string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna/1";
@@ -283,6 +302,86 @@ contract ZeroDayTest is Test, IZeroDay {
         assertEq(nft.tokenURI(1), expectedValueWithIndexOne);
         assertEq(nft.tokenURI(2), expectedValueWithIndexTwo);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                          TIME MANIPULATION
+    //////////////////////////////////////////////////////////////*/
+    function testChangePreSaleDate() public {
+        vm.startPrank(owner);
+        uint256 newPreSaleDate = start_pre_sale_date_example + 1 days; 
+        nft.changePreSaleDate(newPreSaleDate);
+        vm.stopPrank();
+
+        assertEq(nft.getStartPreSaleDate(), newPreSaleDate);
+    }
+
+    function testFailChangePreSaleDateWithSameValue() public {
+        vm.startPrank(owner);
+        uint256 newPreSaleDate = start_pre_sale_date_example; 
+        nft.changePreSaleDate(newPreSaleDate);
+        vm.stopPrank();
+    }
+
+    function testFailChangePreSaleDateWithInvalidCaller() public {
+        vm.startPrank(invalidCaller);
+        uint256 newPreSaleDate = start_pre_sale_date_example + 1 days; 
+        nft.changePreSaleDate(newPreSaleDate);
+        vm.stopPrank();
+    }
+
+    /// @notice for changing reveal date.
+    function testChangeReveal() public {
+        vm.startPrank(owner);
+        uint256 newRevealDate = start_reveal_date_example + 1 days; 
+        nft.changeRevealDate(newRevealDate);
+        vm.stopPrank();
+
+        assertEq(nft.getStartRevealDate(), newRevealDate);
+    }
+
+    function testFailChangeRevealDateWithSameValue() public {
+        vm.startPrank(owner);
+        uint256 newRevealDate = start_reveal_date_example; 
+        nft.changeRevealDate(newRevealDate);
+        vm.stopPrank();
+    }
+
+    function testFailChangeRevealDateWithInvalidCaller() public {
+        vm.startPrank(invalidCaller);
+        uint256 newRevealDate = start_reveal_date_example + 1 days; 
+        nft.changePreSaleDate(newRevealDate);
+        vm.stopPrank();
+    }
+
+    /// @notice for changing public-sale date.
+    function testChangePublicSale() public {
+        vm.startPrank(owner);
+        uint256 newPublicSaleDate = start_public_sale_date_example + 1 days; 
+        nft.changePublicSaleDate(newPublicSaleDate);
+        vm.stopPrank();
+
+        assertEq(nft.getStartPublicSaleDate(), newPublicSaleDate);
+    }
+
+    function testFailChangePublicSaleWithSameValue() public {
+        vm.startPrank(owner);
+        uint256 newPublicSaleDate = start_public_sale_date_example; 
+        nft.changePublicSaleDate(newPublicSaleDate);
+        vm.stopPrank();
+    }
+
+    function testFailChangePublicSaleDateWithInvalidCaller() public {
+        vm.startPrank(invalidCaller);
+        uint256 newPublicSaleDate = start_public_sale_date_example + 1 days; 
+        nft.changePublicSaleDate(newPublicSaleDate);
+        vm.stopPrank();
+    }
+
+
+
+
+
+
 
     function getStatus() public view returns (string memory status) {
         status = "";

@@ -43,6 +43,10 @@ error ZeroDay__PublicSaleDateNotReached();
 error ZeroDay__WeAreNotInThisPhase();
 /// @notice when msg.value be less than the nft minting price.
 error ZeroDay__notSufficientBalanceToMint();
+/// @notice will trigger in whitelist mint and public sale mint if user's balance is less than required.
+error ZeroDay__NotSufficientBalanceToMint();
+/// @notice when owner wants to change the collection's phase period times with a same value as it's defined before.
+error ZeroDay__newDateIsAsSameAsOldOne();
 
 // ▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
 // ▐ ________  _______   ________  ________          ________  ________      ___    ___ ▌
@@ -64,10 +68,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
     uint256 public constant COLLECTION_MAX_SUPPLY = 9983;
-    // @audit-info this should change based on the team decission.
-    uint256 public constant WHITELIST_PRICE = 0.5 ether;
     // @audit-info this sould change based on the team decission.
-    uint256 public constant PUBLIC_SALE_PRICE = 1 ether;
+    uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
 
     // @audit-info we should define these values seperately based on the team plan.
     // @audit-info should be changeable.
@@ -159,10 +161,12 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice Eligible user will call this function to mint his NFT in pre-sale phase.
     function whiteListMint(bytes32[] memory _merkleProof)
         external
+        payable
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PRE_SALE)
         isLessThanMaxSupply
     {
+        if (msg.value < init_pre_sale_price) revert ZeroDay__NotSufficientBalanceToMint();
         if (_merkleProof.length != 0) revert ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert ZeroDay__AlreadyMintedInWhiteList();
 
@@ -194,10 +198,12 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// Invariant: the tokenId is always less than COLLECTION_MAX_SUPPLY.
     function mintNFT(string memory _tokenURI)
         public
+        payable
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PUBLIC_SALE)
         isLessThanMaxSupply
     {
+        if (msg.value < PUBLIC_SALE_MINT_PRICE) revert ZeroDay__NotSufficientBalanceToMint();   
         require(bytes(_tokenURI).length != 0, "ZeroDay__InvalidTokenURI");
 
         uint256 lastCounter = totalSupply() + 1;
@@ -245,6 +251,30 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         collection_phase = PHASE.PUBLIC_SALE;
 
         emit phaseChanged(PHASE.PUBLIC_SALE);
+    }
+
+    /// @notice changing the pre-defined pre-sale date if it's necessary.
+    /// @notice this function is only callable from the contract owner - it doesn't effect on Decentralization.
+    /// @param _newPreSaleDate the new pre-sale date to change.
+    function changePreSaleDate(uint256 _newPreSaleDate) external onlyOwner {
+        if(startPreSaleDate == _newPreSaleDate) revert ZeroDay__newDateIsAsSameAsOldOne();
+        startPreSaleDate = _newPreSaleDate;
+    }
+
+    /// @notice changing the pre-defined pre-sale date if it's necessary.
+    /// @notice this function is only callable from the contract owner - it doesn't effect on Decentralization.
+    /// @param _newRevealDate the new reveal date to change.
+    function changeRevealDate(uint256 _newRevealDate) external onlyOwner {
+        if (startRevealDate == _newRevealDate) revert ZeroDay__newDateIsAsSameAsOldOne();
+        startRevealDate = _newRevealDate;
+    }
+
+    /// @notice changing the pre-defined pre-sale date if it's necessary.
+    /// @notice this function is only callable from the contract owner - it doesn't effect on Decentralization.
+    /// @param _newPublicSaleDate the new public-sale date to change.
+    function changePublicSaleDate(uint256 _newPublicSaleDate) external onlyOwner {
+        if (startPublicSaleDate == _newPublicSaleDate) revert ZeroDay__newDateIsAsSameAsOldOne();
+        startPublicSaleDate = _newPublicSaleDate;
     }
 
     function _baseURI() internal pure virtual override returns (string memory) {
