@@ -17,14 +17,21 @@ contract ZeroDayTest is Test, IZeroDay {
     uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
 
     address owner = address(this);
+    address whitelistEligibleUser = 0x742d35Cc6634C0532925a3b844Bc454e4438f44e;
+    address whitelistIneligibleUser = makeAddr("whitelistIneligibleUser");
     address whitelistValidMinter = makeAddr("whitelistValidMinter");
     address publicSaleMinter = makeAddr("publicSaleMinter");
     address invalidCaller = makeAddr("invalidCaller");
 
+    bytes32[4] public merkleProof;
     bytes32 merkleRoot;
 
     function setUp() public {
-        merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
+        merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;    
+        merkleProof[0] = 0xa69fd875c9047246a750cc12567913f038f3144aeefb7459848b7565ff9645d0;
+        merkleProof[1] = 0x56a1dbfaf5416eb50380994c57a8535b15adb6c8edc6d64da3594dfc518ab3af;
+        merkleProof[2] = 0x87acfff99b30e45716d955a60ddb927f721345ca0f172494ff3478c7b57631ca;
+        merkleProof[3] = 0xeb5884281b10e8766520b42f906cb9965dd04735122d5e52280ec42342d9155c;
 
         vm.startPrank(owner);
         nft = new ZeroDay(
@@ -37,6 +44,10 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.stopPrank();
     }
 
+
+    /*///////////////////////////////////////////////////////////////
+                            MODIFIER
+    //////////////////////////////////////////////////////////////*/
     // #remove the console logs
     modifier changePhaseTo(PHASE _phase, bool _after) {
         vm.startPrank(owner);
@@ -77,6 +88,9 @@ contract ZeroDayTest is Test, IZeroDay {
         _;
     }
 
+    /*///////////////////////////////////////////////////////////////
+                       WHITELIST AND MERKLE TREE
+    //////////////////////////////////////////////////////////////*/
     function testChangeValidMerkleRootWithValidCaller() public {
         bytes32 preMerkleRoot = nft.getMerkleRoot();
         bytes32 newValidMerkleRoot = keccak256(abi.encodePacked("newValidMerkleRoot"));
@@ -90,7 +104,7 @@ contract ZeroDayTest is Test, IZeroDay {
     }
 
     function testFailChangeInvalidMerkleRootWithValidCaller() public {
-        bytes32 sameMerkleRoot = keccak256(abi.encodePacked("merkelRoot"));
+        bytes32 sameMerkleRoot = merkleRoot;
         vm.startPrank(owner);
         nft.changeMerkleRoot(sameMerkleRoot);
         vm.stopPrank();
@@ -101,6 +115,84 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(invalidCaller);
         nft.changeMerkleRoot(newValidMerkleRoot);
+        vm.stopPrank();
+    }
+
+    
+    function testWhiteListMintWithEligibleUser() public changePhaseTo(PHASE.PRE_SALE, true){
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(whitelistEligibleUser);
+        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        vm.stopPrank();
+    }
+
+    function testFailWhiteListMintWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(whitelistEligibleUser);
+        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        vm.stopPrank();
+    }
+
+    function testFailWhiteListMintWithInsufficientBalance()
+        public 
+        changePhaseTo(PHASE.PRE_SALE, true) 
+    {
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(whitelistEligibleUser);
+        vm.deal(whitelistEligibleUser, init_pre_sale_price_example - 1 wei);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        vm.stopPrank();
+    }
+
+    function testFailWhiteListMintForSecondTime()
+        public
+        changePhaseTo(PHASE.PRE_SALE, true)
+    {
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(whitelistEligibleUser);
+        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+
+        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        vm.stopPrank();
+    }
+
+    function testFailWhiteListMintWithIneligibleMinter()
+        public
+        changePhaseTo(PHASE.PRE_SALE, true)
+    {
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(invalidCaller);
+        vm.deal(invalidCaller, init_pre_sale_price_example);
+        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
         vm.stopPrank();
     }
 
@@ -376,8 +468,6 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.changePublicSaleDate(newPublicSaleDate);
         vm.stopPrank();
     }
-
-
 
 
 

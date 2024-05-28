@@ -167,7 +167,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         isLessThanMaxSupply
     {
         if (msg.value < init_pre_sale_price) revert ZeroDay__NotSufficientBalanceToMint();
-        if (_merkleProof.length != 0) revert ZeroDay__MerkleProofHashesAreEmpty();
+        if (_merkleProof.length == 0) revert ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert ZeroDay__AlreadyMintedInWhiteList();
 
         s_whiteListClaimed[msg.sender] = true;

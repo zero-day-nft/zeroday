@@ -1,8 +1,7 @@
 /// @author Parsa Aminpour
 /// @notice this script generate a merkle tree from eligible addresses registered in eligible_addresses.txt file.
 /// @note you should change addresses inside eligible_addresses.txt if you want to call whitelist function in ZeroDay smart contract.
-
-use sha2::{Sha256, Digest};
+use sha3::{Keccak256, Digest};
 use serde::{Serialize, Deserialize};
 use serde_json;
 use std::fs::File;
@@ -28,7 +27,7 @@ impl MerkleNode {
 }
 
 fn hash_pair(left: &str, right: &str) -> String {
-    let mut hasher = Sha256::new();
+    let mut hasher = Keccak256::new();
     hasher.update(left.as_bytes());
     hasher.update(right.as_bytes());
     format!("{:x}", hasher.finalize())
@@ -103,7 +102,7 @@ fn main() -> io::Result<()> {
     
     let leaves: Vec<MerkleNode> = addresses.iter()
         .map(|addr| {
-            let mut hasher = Sha256::new();
+            let mut hasher = Keccak256::new();
             hasher.update(addr.as_bytes());
             let hash = format!("{:x}", hasher.finalize());
             MerkleNode::new(hash)
@@ -113,15 +112,18 @@ fn main() -> io::Result<()> {
     let merkle_root = build_merkle_tree(leaves.clone());
     let serialized_tree = serde_json::to_string_pretty(&merkle_root).unwrap();
 
-    println!("Merkle Root: {}", merkle_root.hash);
     println!("Merkle Tree: {}", serialized_tree);
-
+    
     // Generate Merkle proof for a specific address
-    let target_address = "0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f"; // replace with the address you want to generate proof for
-    let target_hash = format!("{:x}", Sha256::digest(target_address.as_bytes()));
+    // @note change this target_address, output is directly depends on this variable.
+    let target_address = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // replace with the address you want to generate proof for
+    let mut hasher = Keccak256::new();
+    hasher.update(target_address.as_bytes());
+    let target_hash = format!("{:x}", hasher.finalize());
     let proof = get_merkle_proof(&merkle_root, &target_hash);
-
-    println!("Merkle Proof for {}: {:?}", target_address, proof);
+    
+    println!("Merkle Root: {color_green}{}{color_reset}", merkle_root.hash);
+    println!("Merkle Proof for {color_blue}{}{color_reset}: {:?}", target_address, proof);
 
     Ok(())
 }

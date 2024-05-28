@@ -1,17 +1,17 @@
 [package]
-name = "rcmerkle"
-version = "0.1.1"
-authors = ["Sun <huachuang20@gmail.com>"]
+name = "MerkleTree"
+version = "0.1.0"
+authors = ["Parsa <parsa.aminpour@gmail.com>"]
 edition = "2018"
 readme = "README.md"
 description = "Efficient Merkle tree calculation function and state machine."
-repository = "https://github.com/rust-cc/rcmerkle"
+repository = "https://github.com/zero-day-nft"
 keywords = ["merkle", "tree"]
-license = "MIT/Apache-2.0"
+license = "MIT"
 
 [dependencies]
-sha2 = "0.10.8"
+sha3 = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-colored = "2.1.0"
+hex = "0.4"
 inline_colorization = "0.1.6"
