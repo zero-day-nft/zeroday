@@ -1,247 +1,127 @@
-//! Author: Parsa Aminpour
-//! Merkle Tree to calculate Root.
-//! Support Two Way:
-//! One is traditional use MerkleTree, it need send all hashed list.
-//! Two is efficient, but need to save state, like state machine. it
-//! need send new value, it will return the lastest root.
-use sha2::Sha256;
-use sha3::{Digest, Sha3_256};
-use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::marker::PhantomData;
+/// @author Parsa Aminpour
+/// @notice this script generate a merkle tree from eligible addresses registered in eligible_addresses.txt file.
+/// @note you should change addresses inside eligible_addresses.txt if you want to call whitelist function in ZeroDay smart contract.
 
-/// trait to define different hash function
-pub trait Hash: Default + Clone + Eq + PartialEq {
-    fn hash(data: &[u8]) -> Self;
+use sha2::{Sha256, Digest};
+use serde::{Serialize, Deserialize};
+use serde_json;
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+use inline_colorization::*;
 
-    fn to_string(hash: &Self) -> String;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct MerkleNode {
+    hash: String,
+    left: Option<Box<MerkleNode>>,
+    right: Option<Box<MerkleNode>>,
 }
 
-/// Traditional merkle tree.
-pub struct MerkleTree<H: Hash>(PhantomData<H>);
-
-/// Efficient, and save state.
-pub struct BetterMerkleTree<H: Hash>(Vec<H>, H);
-
-impl<H: Hash> MerkleTree<H> {
-    /// Recursive calculation.
-    fn merkle(mut vec: Vec<H>) -> Vec<H> {
-        let vec_len = vec.len();
-        if vec_len == 1 {
-            return vec;
+impl MerkleNode {
+    fn new(hash: String) -> Self {
+        MerkleNode {
+            hash,
+            left: None,
+            right: None,
         }
-
-        let mut next = vec![];
-        let (mut r, m) = (vec_len / 2, vec_len % 2);
-        if m == 1 {
-            let last = vec[vec_len - 1].clone();
-            vec.push(last);
-            r += 1;
-        }
-
-        for i in 0..r {
-            let mut s1 = H::to_string(&vec[i * 2]);
-            s1.push_str(&H::to_string(&vec[i * 2 + 1]));
-            next.push(H::hash(s1.as_bytes()))
-        }
-
-        MerkleTree::merkle(next)
-    }
-
-    /// new a MerkleTree, maybe not use.
-    pub fn new() -> Self {
-        MerkleTree(Default::default())
-    }
-
-    /// Entrance, input your list. and return merkle root.
-    pub fn root(hashes: Vec<H>) -> H {
-        if hashes.len() == 0 {
-            return Default::default();
-        }
-
-        MerkleTree::merkle(hashes).remove(0)
     }
 }
 
-impl<H: Hash> BetterMerkleTree<H> {
-    /// Recursive calculation.
-    fn merkle(&mut self, new: H, is_full: bool, round: usize) -> H {
-        let mut next_full = false;
+fn hash_pair(left: &str, right: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(left.as_bytes());
+    hasher.update(right.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
 
-        if self.0.len() <= round {
-            let mut need_append = true;
-            for i in self.0.iter() {
-                if i != &H::default() {
-                    need_append = false;
-                }
+fn build_merkle_tree(mut leaves: Vec<MerkleNode>) -> MerkleNode {
+    while leaves.len() > 1 {
+        let mut next_level = Vec::new();
+        for i in (0..leaves.len()).step_by(2) {
+            if i + 1 < leaves.len() {
+                let left = leaves[i].clone();
+                let right = leaves[i + 1].clone();
+                let parent_hash = hash_pair(&left.hash, &right.hash);
+                let mut parent = MerkleNode::new(parent_hash);
+                parent.left = Some(Box::new(left));
+                parent.right = Some(Box::new(right));
+                next_level.push(parent);
+            } else {
+                next_level.push(leaves[i].clone());
             }
-            if need_append {
-                self.0.push(new.clone())
-            }
-
-            return new;
         }
-
-        let next = if self.0[round] != H::default() {
-            let mut s1 = H::to_string(&self.0[round]);
-            s1.push_str(&H::to_string(&new));
-
-            if is_full {
-                self.0[round] = H::default();
-                next_full = true;
-            }
-
-            H::hash(s1.as_bytes())
-        } else {
-            let mut s1 = H::to_string(&new);
-            s1.push_str(&s1.clone());
-
-            if is_full {
-                self.0[round] = new;
-            }
-
-            H::hash(s1.as_bytes())
-        };
-
-        self.merkle(next, next_full, round + 1)
+        leaves = next_level;
     }
-
-    /// when start, you need new this state machine.
-    pub fn new() -> Self {
-        BetterMerkleTree(vec![], Default::default())
-    }
-
-    /// load the state machine.
-    pub fn load(vec: Vec<H>) -> Self {
-        BetterMerkleTree(vec, Default::default())
-    }
-
-    /// output the state machine status.
-    pub fn helper(&self) -> &Vec<H> {
-        &self.0
-    }
-
-    /// get now root.
-    pub fn now(&self) -> &H {
-        &self.1
-    }
-
-    /// Entrance, when new input to this machine.
-    pub fn root(&mut self, new: H) -> H {
-        let hash = self.merkle(new, true, 0);
-        self.1 = hash.clone();
-        hash
-    }
+    leaves.remove(0)
 }
 
-/// helper SHA256
-#[derive(Default, Clone, Eq, PartialEq)]
-pub struct SHA256([u8; 32]);
-
-impl Hash for SHA256 {
-    fn hash(data: &[u8]) -> Self {
-        let mut h: SHA256 = Default::default();
-        let mut hasher = Sha256::new();
-        hasher.input(data);
-        h.0.copy_from_slice(&hasher.result()[..]);
-        h
-    }
-
-    fn to_string(hash: &Self) -> String {
-        format!("{}", hash)
-    }
-}
-
-impl Display for SHA256 {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let mut hex = String::new();
-        hex.extend(self.0.iter().map(|byte| format!("{:02x?}", byte)));
-        write!(f, "0x{}", hex)
-    }
-}
-
-impl Debug for SHA256 {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let mut hex = String::new();
-        hex.extend(self.0.iter().map(|byte| format!("{:02x?}", byte)));
-        write!(f, "0x{}", hex)
-    }
-}
-
-/// helper Keccak256(SHA3)
-#[derive(Default, Clone, Eq, PartialEq)]
-pub struct Keccak256([u8; 32]);
-
-impl Hash for Keccak256 {
-    fn hash(data: &[u8]) -> Self {
-        let mut h: Keccak256 = Default::default();
-        let mut hasher = Sha3_256::new();
-        hasher.input(data);
-        h.0.copy_from_slice(&hasher.result()[..]);
-        h
-    }
-
-    fn to_string(hash: &Self) -> String {
-        format!("{}", hash)
-    }
-}
-
-impl Display for Keccak256 {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let mut hex = String::new();
-        hex.extend(self.0.iter().map(|byte| format!("{:02x?}", byte)));
-        write!(f, "0x{}", hex)
-    }
-}
-
-impl Debug for Keccak256 {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let mut hex = String::new();
-        hex.extend(self.0.iter().map(|byte| format!("{:02x?}", byte)));
-        write!(f, "0x{}", hex)
-    }
-}
-
-pub type MerkleTreeSHA256 = MerkleTree<SHA256>;
-pub type BetterMerkleTreeSHA256 = BetterMerkleTree<SHA256>;
-
-pub type MerkleTreeKeccak256 = MerkleTree<Keccak256>;
-pub type BetterMerkleTreeKeccak256 = BetterMerkleTree<Keccak256>;
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        BetterMerkleTreeKeccak256, BetterMerkleTreeSHA256, Hash, Keccak256, MerkleTreeKeccak256,
-        MerkleTreeSHA256, SHA256,
-    };
-
-    #[test]
-    fn test_sha256() {
-        let list = [
-            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
-        ];
-        let hashed_list: Vec<SHA256> = list.iter().map(|v| SHA256::hash(v.as_bytes())).collect();
-        let mut better_merkle = BetterMerkleTreeSHA256::new();
-
-        for i in 0..hashed_list.len() {
-            let root1 = MerkleTreeSHA256::root(hashed_list[0..i + 1].to_vec());
-            let root2 = better_merkle.root(hashed_list[i].clone());
-            assert_eq!(root1, root2);
+fn read_addresses_from_file(filename: &str) -> io::Result<Vec<String>> {
+    let path = Path::new(filename);
+    let file = File::open(&path)?;
+    let lines = io::BufReader::new(file).lines();
+    
+    let mut addresses = Vec::new();
+    for line in lines {
+        if let Ok(address) = line {
+            addresses.push(address);
         }
     }
+    Ok(addresses)
+}
 
-    #[test]
-    fn test_keccak() {
-        let list = [
-            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
-        ];
-        let hashed_list: Vec<Keccak256> =
-            list.iter().map(|v| Keccak256::hash(v.as_bytes())).collect();
-        let mut better_merkle = BetterMerkleTreeKeccak256::new();
+fn get_merkle_proof(node: &MerkleNode, target_hash: &str) -> Vec<String> {
+    let mut proof = Vec::new();
+    build_proof(node, target_hash, &mut proof);
+    proof
+}
 
-        for i in 0..hashed_list.len() {
-            let root1 = MerkleTreeKeccak256::root(hashed_list[0..i + 1].to_vec());
-            let root2 = better_merkle.root(hashed_list[i].clone());
-            assert_eq!(root1, root2);
+fn build_proof(node: &MerkleNode, target_hash: &str, proof: &mut Vec<String>) -> bool {
+    if node.hash == target_hash {
+        return true;
+    }
+    if let Some(ref left) = node.left {
+        if build_proof(left, target_hash, proof) {
+            if let Some(ref right) = node.right {
+                proof.push(right.hash.clone());
+            }
+            return true;
         }
     }
+    if let Some(ref right) = node.right {
+        if build_proof(right, target_hash, proof) {
+            if let Some(ref left) = node.left {
+                proof.push(left.hash.clone());
+            }
+            return true;
+        }
+    }
+    false
+}
+
+fn main() -> io::Result<()> {
+    let addresses = read_addresses_from_file("eligible_addresses.txt")?;
+    
+    let leaves: Vec<MerkleNode> = addresses.iter()
+        .map(|addr| {
+            let mut hasher = Sha256::new();
+            hasher.update(addr.as_bytes());
+            let hash = format!("{:x}", hasher.finalize());
+            MerkleNode::new(hash)
+        })
+        .collect();
+
+    let merkle_root = build_merkle_tree(leaves.clone());
+    let serialized_tree = serde_json::to_string_pretty(&merkle_root).unwrap();
+
+    println!("Merkle Root: {}", merkle_root.hash);
+    println!("Merkle Tree: {}", serialized_tree);
+
+    // Generate Merkle proof for a specific address
+    let target_address = "0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f"; // replace with the address you want to generate proof for
+    let target_hash = format!("{:x}", Sha256::digest(target_address.as_bytes()));
+    let proof = get_merkle_proof(&merkle_root, &target_hash);
+
+    println!("Merkle Proof for {}: {:?}", target_address, proof);
+
+    Ok(())
 }

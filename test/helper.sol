@@ -33,4 +33,8 @@ abstract contract helper is Test, IZeroDay {
 
         vm.stopPrank();
     }
+
+    // Merkle trre generator from addresses.
+
+    // merkle root generator.
 }
