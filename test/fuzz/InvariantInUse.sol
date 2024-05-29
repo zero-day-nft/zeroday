@@ -51,7 +51,7 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
             if (i > max_times) vm.expectRevert();
 
             vm.startPrank(publicSaleMinter);
-            nft.mintNFT(tokenURIHash);
+            nft.mintNFT();
             vm.stopPrank();
         }
     }

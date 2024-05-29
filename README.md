@@ -1,66 +1,59 @@
-## Foundry
+# ZeroDay NFT Smart Contract
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Overview
 
-Foundry consists of:
+ZeroDay is a robust ERC721-based NFT smart contract designed to facilitate secure and efficient digital asset minting and trading. The contract features phased sales, Merkle tree whitelisting, and built-in royalty management.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Features
 
-## Documentation
+- **ERC721 Compliance**: Implements the ERC721 standard for NFTs.
+- **Phased Sales**: Supports pre-sale, public sale, and reveal phases with timestamp management.
+- **Merkle Tree Whitelisting**: Utilizes Merkle proofs for secure and efficient whitelist-based minting.
+- **Royalties**: Implements ERC2981 for secondary sales royalties.
+- **Reentrancy Guard**: Protects against reentrancy attacks using OpenZeppelin's `ReentrancyGuard`.
+- **Custom Error Handling**: Provides detailed custom error messages for better debugging and user feedback.
 
-https://book.getfoundry.sh/
+## Installation
+
+To set up the project, ensure you have [Foundry](https://getfoundry.sh/) installed. Then, follow these steps:
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/ZeroDay.git
+    cd ZeroDay
+    ```
+
+2. Install dependencies:
+    ```bash
+    make install
+    ```
 
 ## Usage
 
-### Build
+### Compile the Contracts
 
-```shell
-$ forge build
+To compile the smart contracts, run:
+
+```bash
+forge build
 ```
 
-### Test
+To deploy the smart contract, first of all add these value to your env variables.
+- ALCHEMY_ENDPOINT
+- ETHERSCAN_API_KEY
+- PRIVATE_KEY
 
-```shell
-$ forge test
+To deploy the smart contract, first import a wallet which has sufficient Sepolia Ethereum Testnet
+```bash
+cast wallet import <YOUR_NAME> --private-key <YOUR_PRIVATE_KEY>
+```
+Then run:
+```bash
+source .env
+forge script script/ZeroDayDeployment.s.sol --rpc-url $ALCHEMY_ENDPOINT --account <YOUR_NAME> --verify --broadcast
 ```
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+To get test cases results:
+```bash
+forge test -vvv
 ```

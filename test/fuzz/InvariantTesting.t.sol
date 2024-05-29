@@ -53,7 +53,7 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
         changePhaseTo(PHASE.PUBLIC_SALE, true)
     {
         vm.startPrank(publicSaleMinter);
-        nft.mintNFT(tokenURIHash);
+        nft.mintNFT();
         vm.stopPrank();
 
         uint256 maxSupply = 9983;

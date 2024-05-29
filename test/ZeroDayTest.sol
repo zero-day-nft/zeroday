@@ -201,22 +201,22 @@ contract ZeroDayTest is Test, IZeroDay {
     //////////////////////////////////////////////////////////////*/
     function testMintNFTWithValidPhase() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
         console.log(getStatus());
-        string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
         
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
         vm.stopPrank();
 
         assertEq(nft.totalSupply(), 1);
-        assertEq(nft.getTokenURI(nft.totalSupply()), testTokenURI);
+        assertTrue(nft.tokenIdMinted(nft.totalSupply()));
     }
     
     function testFailMintNFTWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
-        string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
         vm.stopPrank();
     }
 
@@ -224,10 +224,10 @@ contract ZeroDayTest is Test, IZeroDay {
         public
         changePhaseTo(PHASE.PUBLIC_SALE, true)
     {
-        string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 0.99 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
         vm.stopPrank();
     }
 
@@ -378,19 +378,18 @@ contract ZeroDayTest is Test, IZeroDay {
     function testTokenURIOutput() 
     public 
     changePhaseTo(PHASE.PUBLIC_SALE, true) {
-        string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
+        // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna"; 
 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
 
         vm.deal(publicSaleMinter, 1 ether + 1 wei);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(testTokenURI);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
         vm.stopPrank();
 
-        string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna/1";
-        string memory expectedValueWithIndexTwo = "https://ipfs.io/ipfs/bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna/2";
-
+        string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/1.json";
+        string memory expectedValueWithIndexTwo = "https://ipfs.io/ipfs/2.json";
         assertEq(nft.tokenURI(1), expectedValueWithIndexOne);
         assertEq(nft.tokenURI(2), expectedValueWithIndexTwo);
     }
