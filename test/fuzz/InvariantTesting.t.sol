@@ -14,9 +14,9 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
     string public tokenURIHash = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
     ZeroDay public nft;
     uint256 public constant init_pre_sale_price_example = 1 ether;
-    uint256 public constant start_pre_sale_date_example = 1716718200; // Sunday, May 26, 2024 10:10:00 AM
-    uint256 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
-    uint256 public constant start_public_sale_date_example =  1717063800; //Thursday, May 30, 2024 10:10:00 AM
+    uint256 public constant start_pre_sale_date_example = 1743493497; // Tuesday, April 1, 2025 7:44:57 AM
+    uint256 public constant start_reveal_date_example = 1746085497; // Thursday, May 1, 2025 7:44:57 AM
+    uint256 public constant start_public_sale_date_example =  1748763897; //Sunday, June 1, 2025 7:44:57 AM
 
     address owner = address(this);
     address publicSaleMinter = makeAddr("publicSaleMinter");
@@ -45,58 +45,50 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
             start_public_sale_date_example,
             merkleRoot
         );
+
         targetContract(address(handler));
     }
-    // #bug season management issue.
-    function check_invariant_tokenIdCounterShouldAlwaysBeLessThanTotalSupply() 
+
+    function invariant_tokenIdCounterShouldAlwaysBeLessThanTotalSupplyDuringNFTMint() 
         public
         changePhaseTo(PHASE.PUBLIC_SALE, true)
     {
-        vm.startPrank(publicSaleMinter);
-        nft.mintNFT();
-        vm.stopPrank();
-
         uint256 maxSupply = 9983;
         uint256 tokenCounter = nft.totalSupply();
 
         assertGe(maxSupply, tokenCounter);
+        assertEq(getStatus(), "PUBLIC_SALE");
     }
+
 
     modifier changePhaseTo(PHASE _phase, bool _after) {
         vm.startPrank(owner);
 
         if (_phase == PHASE.PRE_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
-            console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
             
         } else if (_phase == PHASE.REVEAL) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
-            console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
 
             vm.warp(nft.getStartRevealDate() + 10 seconds);
             if (_after) {
-                console.log("Should be reveal: ", getStatus());
                 nft.startReveal();
             }
             
         } else if (_phase == PHASE.PUBLIC_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
-            console.log("should be pre-sale: ", getStatus());
 
             vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
-            console.log("Should be reveal: ", getStatus());
 
             vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
             if (_after) {
                 nft.startPublicSale();
-                console.log("Should be public-sale: ", getStatus());
             }
         }
-
         vm.stopPrank();
         _;
     }

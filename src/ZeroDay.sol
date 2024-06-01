@@ -11,6 +11,7 @@ import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IZeroDay} from "./interfaces/IZeroDay.sol";
 
+import { console } from "forge-std/console.sol";
 
 /// @notice When the caller of the whitelist function is not included in the whitelist.
 error ZeroDay__UserNotIncludedInWhiteList(address user);
@@ -137,7 +138,9 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     /// @notice function is callable just if we be temporally in that time range. 
     modifier shouldBeInThePhaseOf(PHASE _phase) {
+        console.log("time in contract ", block.timestamp);
         if (collection_phase != _phase) {
+            console.log("reverted in time of: ", block.timestamp);
             revert ZeroDay__WeAreNotInThisPhase();
         }
         _;

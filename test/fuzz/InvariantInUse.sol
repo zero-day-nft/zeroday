@@ -10,18 +10,25 @@ import { IZeroDay } from "../../src/interfaces/IZeroDay.sol";
 /// Invariants in contract:
 /// @notice nft counter value should always less than totalSupply. 
 contract InvariantInUse is StdInvariant, Test, IZeroDay {
+    error InvariantInUse__loopTimesExceeded(uint256 time);
+
     string public tokenURIHash = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
     ZeroDay public nft;
 
+    uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
+
     address owner = address(this);
     address publicSaleMinter = makeAddr("publicSaleMinter");
+
+    /// @notice If the count exceeds 1, the time range manipulation process will not be occurred.
+    uint256 private count;
 
     bytes32 public merkleRoot;
     constructor(
         uint256 init_pre_sale_price,
         uint256 startPreSaleDate,
         uint256 startRevealDate,
-        uint256 startPublicSaleDa,
+        uint256 startPublicSaleDate,
         bytes32 _merkleRoot
     ) 
     {
@@ -32,74 +39,77 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
             init_pre_sale_price,
             startPreSaleDate,
             startRevealDate,
-            startPublicSaleDa,
+            startPublicSaleDate,
             _merkleRoot
         );
         vm.stopPrank();
+        count = 0;
     }
 
-
-    function mintNFTInPublicSalePhase(uint256 mintingTimes)
-        public
-        changePhaseTo(PHASE.PUBLIC_SALE, true)
-    {
+    function mintNFT(uint256 mintingTimes) public {
         // Exceedable from collection max supply which is `9983`
-        uint256 max_times = 10000;
+        uint256 max_times = 10;
         mintingTimes = bound(mintingTimes, 1, max_times);
 
+        if (count == 0) {
+        // time range manipulation.
+            vm.warp(nft.getStartPreSaleDate() + 10 seconds);
+            nft.startPreSale();
+
+            vm.warp(nft.getStartRevealDate() + 10 seconds);
+            nft.startReveal();
+
+            vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
+            nft.startPublicSale();
+        }
+
         for (uint256 i = 0; i < mintingTimes; i++) {
-            if (i > max_times) vm.expectRevert();
+            if (i > max_times) revert InvariantInUse__loopTimesExceeded(i);
 
             vm.startPrank(publicSaleMinter);
-            nft.mintNFT();
+
+            vm.deal(publicSaleMinter, PUBLIC_SALE_MINT_PRICE);
+            nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+
+            count = count == 0 ? ++count : count;
+            
             vm.stopPrank();
         }
     }
 
+    /*///////////////////////////////////////////////////////////////
+                           HELPER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
     modifier changePhaseTo(PHASE _phase, bool _after) {
         vm.startPrank(owner);
 
         if (_phase == PHASE.PRE_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
-            console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
             
         } else if (_phase == PHASE.REVEAL) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
-            console.log("should be pre-sale: ", getStatus());
             nft.startPreSale();
 
             vm.warp(nft.getStartRevealDate() + 10 seconds);
             if (_after) {
-                console.log("Should be reveal: ", getStatus());
                 nft.startReveal();
             }
             
         } else if (_phase == PHASE.PUBLIC_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
-            console.log("should be pre-sale: ", getStatus());
 
             vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
-            console.log("Should be reveal: ", getStatus());
+         
 
             vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
             if (_after) {
                 nft.startPublicSale();
-                console.log("Should be public-sale: ", getStatus());
             }
         }
-
         vm.stopPrank();
         _;
-    }
-
-    function getStatus() public view returns (string memory status) {
-        status = "";
-        if(nft.getCurrentPhase() == PHASE.NOT_STARTED) status = "NOT_STARTED";
-        else if(nft.getCurrentPhase() == PHASE.PRE_SALE) status = "PRE_SALE";
-        else if(nft.getCurrentPhase() == PHASE.REVEAL) status = "REVEAL";
-        else if(nft.getCurrentPhase() == PHASE.PUBLIC_SALE) status = "PUBLIC_SALE";
     }
 }
