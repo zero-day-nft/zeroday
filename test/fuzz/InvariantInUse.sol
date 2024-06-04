@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import { Test } from "forge-std/Test.sol";
-import { StdInvariant } from "forge-std/StdInvariant.sol";
-import { console } from "forge-std/console.sol";
-import { ZeroDay } from "../../src/ZeroDay.sol";
-import { IZeroDay } from "../../src/interfaces/IZeroDay.sol";
+import {Test} from "forge-std/Test.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
+import {console} from "forge-std/console.sol";
+import {ZeroDay} from "../../src/ZeroDay.sol";
+import {IZeroDay} from "../../src/interfaces/IZeroDay.sol";
 
 /// Invariants in contract:
-/// @notice nft counter value should always less than totalSupply. 
+/// @notice nft counter value should always less than totalSupply.
 contract InvariantInUse is StdInvariant, Test, IZeroDay {
     error InvariantInUse__loopTimesExceeded(uint256 time);
 
@@ -24,24 +24,18 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
     uint256 private count;
 
     bytes32 public merkleRoot;
+
     constructor(
         uint256 init_pre_sale_price,
         uint256 startPreSaleDate,
         uint256 startRevealDate,
         uint256 startPublicSaleDate,
         bytes32 _merkleRoot
-    ) 
-    {
+    ) {
         merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
 
         vm.startPrank(owner);
-        nft = new ZeroDay(
-            init_pre_sale_price,
-            startPreSaleDate,
-            startRevealDate,
-            startPublicSaleDate,
-            _merkleRoot
-        );
+        nft = new ZeroDay(init_pre_sale_price, startPreSaleDate, startRevealDate, startPublicSaleDate, _merkleRoot);
         vm.stopPrank();
         count = 0;
     }
@@ -52,7 +46,7 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
         mintingTimes = bound(mintingTimes, 1, max_times);
 
         if (count == 0) {
-        // time range manipulation.
+            // time range manipulation.
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
 
@@ -72,7 +66,7 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
             nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
 
             count = count == 0 ? ++count : count;
-            
+
             vm.stopPrank();
         }
     }
@@ -86,7 +80,6 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
         if (_phase == PHASE.PRE_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
-            
         } else if (_phase == PHASE.REVEAL) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
@@ -95,14 +88,12 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
             if (_after) {
                 nft.startReveal();
             }
-            
         } else if (_phase == PHASE.PUBLIC_SALE) {
             vm.warp(nft.getStartPreSaleDate() + 10 seconds);
             nft.startPreSale();
 
             vm.warp(nft.getStartRevealDate() + 10 seconds);
             nft.startReveal();
-         
 
             vm.warp(nft.getStartPublicSaleDate() + 10 seconds);
             if (_after) {

@@ -10,10 +10,10 @@ import {ZeroDayTest} from "./ZeroDayTest.sol";
 abstract contract helper is IZeroDay {
     function getStatus(ZeroDay nft) public view returns (string memory status) {
         status = "";
-        if(nft.getCurrentPhase() == PHASE.NOT_STARTED) status = "NOT_STARTED";
-        else if(nft.getCurrentPhase() == PHASE.PRE_SALE) status = "PRE_SALE";
-        else if(nft.getCurrentPhase() == PHASE.REVEAL) status = "REVEAL";
-        else if(nft.getCurrentPhase() == PHASE.PUBLIC_SALE) status = "PUBLIC_SALE";
+        if (nft.getCurrentPhase() == PHASE.NOT_STARTED) status = "NOT_STARTED";
+        else if (nft.getCurrentPhase() == PHASE.PRE_SALE) status = "PRE_SALE";
+        else if (nft.getCurrentPhase() == PHASE.REVEAL) status = "REVEAL";
+        else if (nft.getCurrentPhase() == PHASE.PUBLIC_SALE) status = "PUBLIC_SALE";
     }
 
     // Merkle trre generator from addresses.
