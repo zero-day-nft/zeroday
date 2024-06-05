@@ -33,4 +33,8 @@ library Errors {
     error ZeroDay__thisTokenIdHasNotMinted();
     /// @notice this error will appear if a phase of this collection become stopped
     error ZeroDay__thisPhaseLockedByTheOwner();
+    /// @notice this error will appear in withdraw function if the contract's balance be less than the requested amount.
+    error ZeroDay__notSufficientBalanceInContractToWithdraw();
+    /// @notice this error will appear when withdraw function failed.
+    error ZeroDay__withdrawReverted(bytes returnedData);
 }

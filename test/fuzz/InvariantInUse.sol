@@ -15,6 +15,7 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
     string public tokenURIHash = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
     ZeroDay public nft;
 
+    uint96 public constant ROYALTY_BASIS_POINT_VALUE = 500; // 5% of token Royalty.
     uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
 
     address owner = address(this);
@@ -63,7 +64,7 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
             vm.startPrank(publicSaleMinter);
 
             vm.deal(publicSaleMinter, PUBLIC_SALE_MINT_PRICE);
-            nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+            nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
 
             count = count == 0 ? ++count : count;
 

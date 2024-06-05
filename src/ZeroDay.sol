@@ -11,6 +11,7 @@ import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IZeroDay} from "./interfaces/IZeroDay.sol";
 import {Errors} from "./libraries/Errors.sol";
+import {console} from "forge-std/console.sol";
 
 // ▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
 // ▐ ________  _______   ________  ________          ________  ________      ___    ___ ▌
@@ -71,10 +72,13 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     mapping(address minter => bool included) private s_whiteListClaimed;
     mapping(uint256 tokenId => bool minted) private s_tokenIdMinted;
 
+    event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
     event MintedInWhiteList(address minter);
     event phaseChanged(PHASE phase);
     event merkleRootChanged(bytes32 newMerkleRoot);
     event CurrentPhaseLockedByOwner(PHASE phase);
+    event fallbackEmitted(address caller);
+    event receiveEmitted(address caller);
 
     /// @param _init_pre_sale_price is the price of NFTs in pre-sale phase.
     /// @param _merkle_root is the hash of merkle tree used for whitelist function - caluclated off-chain.
@@ -89,7 +93,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         uint256 _startRevealDate,
         uint256 _startPublicSaleDate,
         bytes32 _merkle_root
-    ) ERC721("ZeroDay", "ZERO") Ownable(msg.sender) {
+    ) payable ERC721("ZeroDay", "ZERO") Ownable(msg.sender) {
         init_pre_sale_price = _init_pre_sale_price;
         startPreSaleDate = _startPreSaleDate;
         startPublicSaleDate = _startPublicSaleDate;
@@ -98,7 +102,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         // initial phase
         collection_phase = PHASE.PRE_SALE;
         phaseLocked = false;
-        
+
         totalMinted = 0;
     }
 
@@ -148,17 +152,40 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         _transferOwnership(newOwner);
     }
 
+    /// @notice This function is only callable by the owner of the contract.
+    /// @notice The onlyOwner caller restriction doesn't affect the decentralization of the contract.
+    /// @param _target The address to which the owner wants to send Ether.
+    /// @param _amount The amount of Ether that the owner wants to transfer from this contract to _target.
+    /// @param _data Optional data for the transfer, could be "".
+    function withdraw(address payable _target, uint256 _amount, bytes memory _data) external onlyOwner {
+        if (_amount > address(this).balance) {
+            revert Errors.ZeroDay__notSufficientBalanceInContractToWithdraw();
+        }
+
+        (bool success, bytes memory returnedData) = _target.call{value: _amount}(_data);
+        if (!success) {
+            revert Errors.ZeroDay__withdrawReverted(returnedData);
+        }
+        emit withdrawSucceeded(address(this), _target, _amount, _data);
+    }
+
+    fallback() external payable {
+        emit fallbackEmitted(msg.sender);
+    }
+
+    receive() external payable {
+        emit receiveEmitted(msg.sender);
+    }
+
     /// @param _merkleProof calculated merkle-proof off-chain to facilitate the whitelist process.
     /// @notice Eligible user could call this function to mint his NFT in pre-sale phase.
     function whiteListMint(bytes32[] memory _merkleProof)
         external
-        payable
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PRE_SALE)
         isPhaseLocked
         isLessThanMaxSupply
     {
-        if (msg.value < init_pre_sale_price) revert Errors.ZeroDay__NotSufficientBalanceToMint();
         if (_merkleProof.length == 0) revert Errors.ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert Errors.ZeroDay__AlreadyMintedInWhiteList();
 
@@ -188,7 +215,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice this function is callable in public-sale phase.
     /// @notice to call this function msg.sender has to own msg.value more than PUBLIC_SALE_MINT_PRICE.
     /// Invariant: the tokenId is always less than COLLECTION_MAX_SUPPLY.
-    function mintNFT()
+    function mintNFT(uint96 _royaltyValue)
         public
         payable
         nonReentrant
@@ -204,6 +231,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         unchecked {
             totalMinted++;
         }
+
+        _setTokenRoyalty(lastCounter, msg.sender, _royaltyValue);
         _safeMint(msg.sender, lastCounter);
     }
 

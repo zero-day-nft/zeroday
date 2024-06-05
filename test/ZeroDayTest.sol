@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 import {ZeroDay} from "../src/ZeroDay.sol";
 import {IZeroDay} from "../src/interfaces/IZeroDay.sol";
 import {helper} from "./helper.sol";
+import {mulDiv} from "@prb-math/src/Common.sol";
 
 contract ZeroDayTest is Test, IZeroDay {
     ZeroDay public nft;
@@ -15,6 +16,8 @@ contract ZeroDayTest is Test, IZeroDay {
     uint256 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
     uint256 public constant start_public_sale_date_example = 1717063800; //Thursday, May 30, 2024 10:10:00 AM
     uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
+    uint96 public constant ROYALTY_BASIS_POINT_VALUE = 500; // 5% of token Royalty.
+    uint96 public constant FEE_DENOMINATOR = 10000; // 100 in basis points.
 
     address owner = address(this);
     address whitelistEligibleUser = 0x742d35Cc6634C0532925a3b844Bc454e4438f44e;
@@ -25,6 +28,8 @@ contract ZeroDayTest is Test, IZeroDay {
 
     bytes32[4] public merkleProof;
     bytes32 merkleRoot;
+
+    event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
 
     function setUp() public {
         merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;
@@ -43,6 +48,10 @@ contract ZeroDayTest is Test, IZeroDay {
         );
         vm.stopPrank();
     }
+
+    /// @notice fallback and receive functions are just for testing withdraw functionality.
+    fallback() external payable {}
+    receive() external payable {}
 
     /*///////////////////////////////////////////////////////////////
                             MODIFIER
@@ -86,6 +95,59 @@ contract ZeroDayTest is Test, IZeroDay {
     }
 
     /*///////////////////////////////////////////////////////////////
+                           WITHDRAW FUNCTION
+    //////////////////////////////////////////////////////////////*/
+    function testWithdrawByValidOwnerWithValidAmount() public {
+        vm.deal(address(nft), 2 ether);
+
+        uint256 target_balance_before_trasnfer = address(this).balance;
+        vm.startPrank(payable(owner));
+        nft.withdraw(payable(address(this)), 1 ether, "");
+        vm.stopPrank();
+        uint256 traget_balance_after_trasnfer = address(this).balance;
+
+        assertEq(address(nft).balance, 1 ether, "NFT contract balance didn't changed");
+        assertEq(
+            traget_balance_after_trasnfer, target_balance_before_trasnfer + 1 ether, "target balance didn't changed"
+        );
+    }
+
+    function testFailWithdrawByInvalidCallerWithValidAmount() public {
+        vm.deal(address(nft), 2 ether);
+
+        vm.startPrank(payable(invalidCaller));
+        nft.withdraw(payable(address(this)), 1 ether, "");
+        vm.stopPrank();
+    }
+
+    function testFailWithdrawByValidCallerWithInvalidAmount() public {
+        vm.deal(address(nft), 1 ether - 1 wei);
+
+        vm.startPrank(payable(invalidCaller));
+        nft.withdraw(payable(address(this)), 1 ether, "");
+        vm.stopPrank();
+    }
+
+    function testWithdrawByValidCallerWithValidAmountViaMintFunction() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 1 ether * 2);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
+        vm.stopPrank();
+
+        uint256 target_balance_before_trasnfer = address(this).balance;
+        vm.startPrank(payable(owner));
+        nft.withdraw(payable(address(this)), 1 ether, "");
+        vm.stopPrank();
+        uint256 traget_balance_after_trasnfer = address(this).balance;
+
+        assertEq(address(nft).balance, 1 ether, "NFT contract balance didn't changed");
+        assertEq(
+            traget_balance_after_trasnfer, target_balance_before_trasnfer + 1 ether, "target balance didn't changed"
+        );
+    }
+
+    /*///////////////////////////////////////////////////////////////
                        WHITELIST AND MERKLE TREE
     //////////////////////////////////////////////////////////////*/
     function testChangeValidMerkleRootWithValidCaller() public {
@@ -123,8 +185,8 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
@@ -136,23 +198,23 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
-    function testFailWhiteListMintWithInsufficientBalance() public changePhaseTo(PHASE.PRE_SALE, true) {
-        bytes32[] memory _merkleProof = new bytes32[](4);
-        _merkleProof[0] = merkleProof[0];
-        _merkleProof[1] = merkleProof[1];
-        _merkleProof[2] = merkleProof[2];
-        _merkleProof[3] = merkleProof[3];
+    // function testFailWhiteListMintWithInsufficientBalance() public changePhaseTo(PHASE.PRE_SALE, true) {
+    //     bytes32[] memory _merkleProof = new bytes32[](4);
+    //     _merkleProof[0] = merkleProof[0];
+    //     _merkleProof[1] = merkleProof[1];
+    //     _merkleProof[2] = merkleProof[2];
+    //     _merkleProof[3] = merkleProof[3];
 
-        vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example - 1 wei);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
-        vm.stopPrank();
-    }
+    //     vm.startPrank(whitelistEligibleUser);
+    //     vm.deal(whitelistEligibleUser, init_pre_sale_price_example - 1 wei);
+    //     nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+    //     vm.stopPrank();
+    // }
 
     function testFailWhiteListMintForSecondTime() public changePhaseTo(PHASE.PRE_SALE, true) {
         bytes32[] memory _merkleProof = new bytes32[](4);
@@ -162,11 +224,11 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
 
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
@@ -179,7 +241,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(invalidCaller);
         vm.deal(invalidCaller, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
@@ -195,8 +257,8 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.stopPrank();
 
         vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
@@ -213,8 +275,8 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.stopPrank();
 
         vm.startPrank(whitelistEligibleUser);
-        vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint{value: init_pre_sale_price_example}(_merkleProof);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
         vm.stopPrank();
     }
 
@@ -227,18 +289,23 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
 
         assertEq(nft.totalSupply(), 1);
         assertTrue(nft.tokenIdMinted(nft.totalSupply()));
+
+        (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(nft.totalSupply(), PUBLIC_SALE_MINT_PRICE);
+        console.log("Royalty amount: ", royaltyAmount);
+        assertEq(royaltyOwner, publicSaleMinter);
+        assertEq(royaltyAmount, calculateRoyalty(PUBLIC_SALE_MINT_PRICE));
     }
 
     function testFailMintNFTWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
         // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
     }
 
@@ -246,7 +313,7 @@ contract ZeroDayTest is Test, IZeroDay {
         // string memory testTokenURI = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 0.99 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
     }
 
@@ -257,7 +324,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
     }
 
@@ -269,7 +336,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
     }
 
@@ -395,10 +462,10 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
 
         vm.deal(publicSaleMinter, 1 ether + 1 wei);
-        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}();
+        nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
 
         string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/1.json";
@@ -479,6 +546,10 @@ contract ZeroDayTest is Test, IZeroDay {
         uint256 newPublicSaleDate = start_public_sale_date_example + 1 days;
         nft.changePublicSaleDate(newPublicSaleDate);
         vm.stopPrank();
+    }
+
+    function calculateRoyalty(uint256 _price) private pure returns (uint256) {
+        return mulDiv(_price, ROYALTY_BASIS_POINT_VALUE, FEE_DENOMINATOR);
     }
 
     function getStatus() public view returns (string memory status) {

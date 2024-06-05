@@ -18,6 +18,9 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
     uint256 public constant start_reveal_date_example = 1746085497; // Thursday, May 1, 2025 7:44:57 AM
     uint256 public constant start_public_sale_date_example = 1748763897; //Sunday, June 1, 2025 7:44:57 AM
 
+    uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
+    uint96 public constant ROYALTY_BASIS_POINT_VALUE = 500; // 5% of token Royalty.
+
     address owner = address(this);
     address publicSaleMinter = makeAddr("publicSaleMinter");
 
@@ -58,6 +61,10 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
 
         assertGe(maxSupply, tokenCounter);
         assertEq(getStatus(), "PUBLIC_SALE");
+
+        (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(tokenCounter, PUBLIC_SALE_MINT_PRICE);
+        console.log("Royalty Amount: ", royaltyAmount);
+        // @audit testing the royaltyAmount value in Fuzz testing.
     }
 
     modifier changePhaseTo(PHASE _phase, bool _after) {
