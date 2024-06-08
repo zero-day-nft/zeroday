@@ -72,6 +72,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     mapping(address minter => bool included) private s_whiteListClaimed;
     mapping(uint256 tokenId => bool minted) private s_tokenIdMinted;
 
+    event tokenTransferSucceeded(address indexed from, address indexed to, uint256 indexed tokenId, bytes data);
     event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
     event MintedInWhiteList(address minter);
     event phaseChanged(PHASE phase);
@@ -87,6 +88,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @param _startPublicSaleDate is the time that public sale phase should start.
     /// @notice using Ownable to granting access to the contract's deployer won't effect on centralization rule.
     /// @notice owner accessability restricted to managing phase that we are in, not manipulating critical functionlaities.
+    /// @dev Setting defualt royalty to this contract's address for artists who don't use royalty for their arts.
     constructor(
         uint256 _init_pre_sale_price,
         uint256 _startPreSaleDate,
@@ -104,6 +106,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         phaseLocked = false;
 
         totalMinted = 0;
+
+        _setDefaultRoyalty(address(this), 0);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -232,11 +236,31 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
             totalMinted++;
         }
 
-        _setTokenRoyalty(lastCounter, msg.sender, _royaltyValue);
+        // if _royaltyValue is sets to zero, then the default Roaylty will consider.
+        if (_royaltyValue != 0) {
+            _setTokenRoyalty(lastCounter, msg.sender, _royaltyValue);
+        }
         _safeMint(msg.sender, lastCounter);
     }
 
-    // @audit-info implementing Chainlink Automation for reveal event.
+    /// @notice transfering NFT asset to another wallet.
+    /// @param _to is the destination address which should not be address(0)
+    /// @param _tokenId is the one of your NFT token's ID that you want to trasnfer.
+    /// @param _data is the encoded message in the transfer function which is forwarded in {IERC721Receiver-onERC721Received} to contract recipients.
+    function transfer(address _to, uint256 _tokenId, bytes memory _data)
+        external
+        payable
+        nonReentrant
+        shouldBeInThePhaseOf(PHASE.PUBLIC_SALE)
+    {
+        if (_to == address(0x0)) revert Errors.ZeroDay__invalidAddresses();
+        if (_requireOwned(_tokenId) != msg.sender) revert Errors.ZeroDay__callerIsNotOwner();
+
+        _safeTransfer(msg.sender, _to, _tokenId, _data);
+
+        emit tokenTransferSucceeded(msg.sender, _to, _tokenId, _data);
+    }
+
     /// @notice only owner of the contract could call this function.
     /// @notice This function can be called just once.
     /// @notice to call this function we have to be in the pre-sale phase.

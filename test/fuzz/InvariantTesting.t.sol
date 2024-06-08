@@ -61,10 +61,15 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
 
         assertGe(maxSupply, tokenCounter);
         assertEq(getStatus(), "PUBLIC_SALE");
+        if (tokenCounter != 0) {
+            assertTrue(nft.tokenIdMinted(nft.totalSupply()));
+        }
 
-        (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(tokenCounter, PUBLIC_SALE_MINT_PRICE);
-        console.log("Royalty Amount: ", royaltyAmount);
-        // @audit testing the royaltyAmount value in Fuzz testing.
+        if (tokenCounter != 0) {
+            (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(tokenCounter - 1, PUBLIC_SALE_MINT_PRICE);
+            assertEq(royaltyOwner, publicSaleMinter);
+            assertEq(royaltyAmount, 50000000000000000);
+        }
     }
 
     modifier changePhaseTo(PHASE _phase, bool _after) {

@@ -24,6 +24,7 @@ contract ZeroDayTest is Test, IZeroDay {
     address whitelistIneligibleUser = makeAddr("whitelistIneligibleUser");
     address whitelistValidMinter = makeAddr("whitelistValidMinter");
     address publicSaleMinter = makeAddr("publicSaleMinter");
+    address destinationUser = makeAddr("destinationUser");
     address invalidCaller = makeAddr("invalidCaller");
 
     bytes32[4] public merkleProof;
@@ -337,6 +338,56 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.startPrank(publicSaleMinter);
         vm.deal(publicSaleMinter, 1 ether);
         nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
+        vm.stopPrank();
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            TRANSFER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+    function testTransferWithValidCallerAndValidDestination() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: 1 ether}(10);
+
+        nft.transfer(destinationUser, 1, "");
+        vm.stopPrank();
+
+        assertEq(nft.balanceOf(publicSaleMinter), 0);
+        assertEq(nft.balanceOf(destinationUser), 1);
+        assertNotEq(nft.ownerOf(1), publicSaleMinter);
+        assertEq(nft.ownerOf(1), destinationUser);
+    }
+
+    function testFailTransferWithInvalidCallerAndValidDestination() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: 1 ether}(10);
+        vm.stopPrank();
+
+        vm.startPrank(invalidCaller);
+        nft.transfer(destinationUser, 1, "");
+        vm.stopPrank();
+    }
+
+    function testFailTransferWithValidCallerAndInvalidDestination() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: 1 ether}(10);
+        vm.stopPrank();
+
+        vm.startPrank(publicSaleMinter);
+        nft.transfer(address(0), 1, "");
+        vm.stopPrank();
+    }
+
+    function testFailTransferWithInvalidPhase() public changePhaseTo(PHASE.PUBLIC_SALE, false) {
+        vm.startPrank(publicSaleMinter);
+        vm.deal(publicSaleMinter, 1 ether);
+        nft.mintNFT{value: 1 ether}(10);
+        vm.stopPrank();
+
+        vm.startPrank(publicSaleMinter);
+        nft.transfer(destinationUser, 1, "");
         vm.stopPrank();
     }
 

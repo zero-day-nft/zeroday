@@ -37,4 +37,8 @@ library Errors {
     error ZeroDay__notSufficientBalanceInContractToWithdraw();
     /// @notice this error will appear when withdraw function failed.
     error ZeroDay__withdrawReverted(bytes returnedData);
+    /// @notice this error will appear when a zero address received as input address which is invalid.
+    error ZeroDay__invalidAddresses();
+    /// @notice this error will appear when caller wants to trasnfer an asset which is not the owner of that.
+    error ZeroDay__callerIsNotOwner();
 }
