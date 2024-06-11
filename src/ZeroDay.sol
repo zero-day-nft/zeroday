@@ -103,7 +103,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         startRevealDate = _startRevealDate;
         s_merkleRoot = _merkle_root;
         // initial phase
-        collection_phase = PHASE.PRE_SALE;
+        collection_phase = PHASE.NOT_STARTED;
         phaseLocked = false;
 
         totalMinted = 0;
@@ -253,10 +253,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     }
 
 
-/// @notice Transfers an NFT asset to another wallet.
-/// @param _to The destination address, which should not be the zero address (address(0)).
-/// @param _tokenId The ID of the NFT token that you want to transfer.
-/// @param _data The encoded message in the transfer function, which is forwarded to contract recipients in {IERC721Receiver-onERC721Received}.
+    /// @notice Transfers an NFT asset to another wallet.
+    /// @param _to The destination address, which should not be the zero address (address(0)).
+    /// @param _tokenId The ID of the NFT token that you want to transfer.
+    /// @param _data The encoded message in the transfer function, which is forwarded to contract recipients in {IERC721Receiver-onERC721Received}.
     function transfer(address _to, uint256 _tokenId, bytes memory _data)
         external
         payable
@@ -272,21 +272,23 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     }
 
     /// @notice Only the owner of the contract can call this function.
-    /// @notice The function must be called during the pre-sale phase.
-    function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
+    /// @notice This function can be called only once.
+    /// @notice to call this function we have to be in the PRE_SALED phase in terms of time and in the NOT_STARTED in terms of current phase.
+    function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.NOT_STARTED) {
         require(!preSaled, "ZeroDay__preSaledBefore");
 
         if (!(timeStamp() >= startPreSaleDate && timeStamp() < startRevealDate)) {
             revert Errors.ZeroDay__PreSaleDateNotReached();
         }
         preSaled = true;
+        collection_phase = PHASE.PRE_SALE;
 
         emit phaseChanged(PHASE.PRE_SALE);
     }
 
     /// @notice Only the owner of the contract can call this function.
     /// @notice This function can be called only once.
-    /// @notice The function must be called during the Reveal phase.
+    /// @notice to call this function we have to be in the REVEAL phase in terms of time and in the PRE_SALE in terms of current phase.
     function startReveal() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!revealed, "ZeroDay__ReevaledBefore");
 
@@ -301,7 +303,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     /// @notice only owner of the contract could call this function.
     /// @notice This function can be called just once.
-    /// @notice to call this function we have to be in the public-sale phase.
+    /// @notice to call this function we have to be in the public-sale phase in terms of time and in the REVEAL in terms of current phase.
     function startPublicSale() external onlyOwner shouldBeInThePhaseOf(PHASE.REVEAL) {
         require(!publicSaled, "ZeroDay__publicSaledBefore");
 
@@ -314,32 +316,32 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         emit phaseChanged(PHASE.PUBLIC_SALE);
     }
 
-    /// @notice changing the pre-defined pre-sale date if it's necessary.
-    /// @notice this function is only callable from the contract owner - it doesn't effect on decentralization rule.
-    /// @param _newPreSaleDate the new pre-sale date to change.
+    /// @notice Changes the pre-defined pre-sale date if necessary.
+    /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
+    /// @param _newPreSaleDate The new pre-sale date to be set.
     function changePreSaleDate(uint256 _newPreSaleDate) external onlyOwner {
         if (startPreSaleDate == _newPreSaleDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startPreSaleDate = _newPreSaleDate;
     }
 
-    /// @notice changing the pre-defined Reveal date if it's necessary.
-    /// @notice this function is only callable from the contract owner - it doesn't effect on decentralization rule.
-    /// @param _newRevealDate the new reveal date to change.
+    /// @notice Changes the pre-defined Reveal date if necessary.
+    /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
+    /// @param _newRevealDate The new Reveal date to be set.
     function changeRevealDate(uint256 _newRevealDate) external onlyOwner {
         if (startRevealDate == _newRevealDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startRevealDate = _newRevealDate;
     }
 
-    /// @notice changing the pre-defined pre-sale date if it's necessary.
-    /// @notice this function is only callable from the contract owner - it doesn't effect on decentralization rule.
-    /// @param _newPublicSaleDate the new public-sale date to change.
+    /// @notice Changes the pre-defined public sale date if necessary.
+    /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
+    /// @param _newPublicSaleDate The new public sale date to be set.
     function changePublicSaleDate(uint256 _newPublicSaleDate) external onlyOwner {
         if (startPublicSaleDate == _newPublicSaleDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startPublicSaleDate = _newPublicSaleDate;
     }
 
-    /// @notice this function is use for modifying public function callable using for a specific phase.
-    /// @dev only owner could call this function.
+    /// @notice Modifies the callable status of public functions for a specific phase.
+    /// @dev Only the owner can call this function.
     function changePhaseLock() external onlyOwner {
         phaseLocked = phaseLocked ? false : true;
         emit CurrentPhaseLockedByOwner(collection_phase);
@@ -352,10 +354,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /*///////////////////////////////////////////////////////////////
                             VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
-    /// @notice getting ipfs url (represent tokenURI) to get correspond tokenId NFT metadata.
-    /// @notice the tokenURI format is https://ipfs.io/ipfs/{tokenId},json
-    /// @param _tokenId is the tokenId of that NFT you want its tokenURI.
-    /// @return tokenURI.
+    /// @notice Retrieves the IPFS URL representing the tokenURI to get the metadata for the corresponding NFT tokenId.
+    /// @notice The tokenURI format is https://ipfs.io/ipfs/{tokenId}.json
+    /// @param _tokenId The tokenId of the NFT for which you want the tokenURI.
+    /// @return tokenURI A string representing the tokenURI.
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
         if (!s_tokenIdMinted[_tokenId]) revert Errors.ZeroDay__thisTokenIdHasNotMinted();
 
