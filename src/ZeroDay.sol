@@ -74,6 +74,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     event tokenTransferSucceeded(address indexed from, address indexed to, uint256 indexed tokenId, bytes data);
     event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
+    event NFTMinted(uint256 indexed tokenId, address indexed owner, uint96 indexed royaltyValue);
     event MintedInWhiteList(address minter);
     event phaseChanged(PHASE phase);
     event merkleRootChanged(bytes32 newMerkleRoot);
@@ -82,10 +83,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     event receiveEmitted(address caller);
 
     /// @param _init_pre_sale_price is the price of NFTs in pre-sale phase.
-    /// @param _merkle_root is the hash of merkle tree used for whitelist function - caluclated off-chain.
     /// @param _startPreSaleDate is the time that pre-sale should start.
     /// @param _startRevealDate is the time that reveal phase should start.
     /// @param _startPublicSaleDate is the time that public sale phase should start.
+    /// @param _merkle_root is the hash of merkle tree used for whitelist function - caluclated off-chain.
     /// @notice using Ownable to granting access to the contract's deployer won't effect on centralization rule.
     /// @notice owner accessability restricted to managing phase that we are in, not manipulating critical functionlaities.
     /// @dev Setting defualt royalty to this contract's address for artists who don't use royalty for their arts.
@@ -128,7 +129,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         _;
     }
 
-    modifier isPhaseLocked() {
+    modifier isPhaseUnlocked() {
         if (phaseLocked) revert Errors.ZeroDay__thisPhaseLockedByTheOwner();
         _;
     }
@@ -157,24 +158,23 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @dev Transfers ownership of the contract to a new account (`newOwner`).
     /// @notice Can only be called by the current owner.
     function transferOwnership(address newOwner) public virtual override onlyOwner {
-        if (newOwner == address(0) && newOwner != owner()) {
+        if (newOwner == address(0) && newOwner == owner()) {
             revert OwnableInvalidOwner(address(0));
         }
         _transferOwnership(newOwner);
     }
 
-    /// @notice This function is only callable by the owner of the contract.
-    /// @notice The onlyOwner caller restriction doesn't affect the decentralization of the contract.
-    /// @param _target The address to which the owner wants to send Ether.
-    /// @param _amount The amount of Ether that the owner wants to transfer from this contract to _target.
-    /// @param _data Optional data for the transfer, could be "".
+    /// @notice This function can only be called by the owner of the contract.
+    /// @notice The restriction that only the owner can call this function does not compromise the decentralization of the contract.
+    /// @param _target The address to which the owner intends to send Ether.
+    /// @param _amount The amount of Ether the owner intends to transfer from this contract to the specified target address.
+    /// @param _data Optional data to include with the transfer, which can be an empty string.
     function withdraw(address payable _target, uint256 _amount, bytes memory _data) external onlyOwner {
         if (_amount > address(this).balance) {
             revert Errors.ZeroDay__notSufficientBalanceInContractToWithdraw();
         }
 
-        uint256 amount = (_amount > address(this).balance || _amount == type(uint256).max) 
-            ? address(this).balance : _amount;
+        uint256 amount = _amount == type(uint256).max ? address(this).balance : _amount;
 
         (bool success, bytes memory returnedData) = _target.call{value: amount}(_data);
         if (!success) {
@@ -190,50 +190,54 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         external
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PRE_SALE)
-        isPhaseLocked
+        isPhaseUnlocked
         isLessThanMaxSupply
     {
         if (_merkleProof.length == 0) revert Errors.ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert Errors.ZeroDay__AlreadyMintedInWhiteList();
 
-        s_whiteListClaimed[msg.sender] = true;
+        s_whiteListClaimed[msg.sender] = true;  
         _whiteListMint(_merkleProof, msg.sender);
 
         emit MintedInWhiteList(msg.sender);
     }
 
-    /// @notice the pre-defined addresses could call this function to mint their NFT in pre-sale.
-    /// @param _merkleProof is all hashes which are calculated off-chain.
-    /// @param _minter is for verifying address included in merkle proof.
-    /// @notice follows CEI
+    /// @param _merkleProof An array of hashes that are calculated off-chain.
+    /// @param _minter The address to be verified as included in the Merkle proof.
+    /// @notice This function follows the Checks-Effects-Interactions (CEI) pattern.
     function _whiteListMint(bytes32[] memory _merkleProof, address _minter) internal {
         bytes32 leaf = keccak256(abi.encodePacked(_minter));
 
         if (!MerkleProof.verify(_merkleProof, s_merkleRoot, leaf)) {
             revert Errors.ZeroDay__UserNotIncludedInWhiteList(_minter);
         }
+        uint256 tokenIdToMint = totalMinted;
         unchecked {
             totalMinted++;
         }
 
-        _safeMint(_minter, totalSupply() + 1);
+        s_tokenIdMinted[tokenIdToMint] = true;
+        _safeMint(_minter, tokenIdToMint);
     }
 
-    /// @notice this function is callable in public-sale phase.
-    /// @notice to call this function msg.sender has to own msg.value more than PUBLIC_SALE_MINT_PRICE.
-    /// Invariant: the tokenId is always less than COLLECTION_MAX_SUPPLY.
+    /// @notice This function can be called during the public sale phase.
+    /// @notice To call this function, the sender (msg.sender) must possess a balance greater than or equal to the public sale mint price (PUBLIC_SALE_MINT_PRICE).
+    /// @param _royaltyValue The percentage of the sale price that will be paid to the original creator of the NFT as a royalty. 
+    ///     This value ensures that creators continue to receive compensation each time their NFT is resold in secondary markets. 
+    ///     The royalty value is typically set during the minting of the NFT and is immutable thereafter. It represents a key feature 
+    ///     in supporting the ongoing revenue for artists and creators in the NFT ecosystem.
     function mintNFT(uint96 _royaltyValue)
         public
         payable
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PUBLIC_SALE)
-        isPhaseLocked
+        isPhaseUnlocked
         isLessThanMaxSupply
     {
         if (msg.value < PUBLIC_SALE_MINT_PRICE) revert Errors.ZeroDay__NotSufficientBalanceToMint();
 
-        uint256 lastCounter = totalSupply() + 1;
-        s_tokenIdMinted[lastCounter] = true;
+        uint256 tokenIdToMint = totalSupply();
+        s_tokenIdMinted[tokenIdToMint] = true;
 
         unchecked {
             totalMinted++;
@@ -241,15 +245,18 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
         // if _royaltyValue is sets to zero, then the default Roaylty will consider.
         if (_royaltyValue != 0) {
-            _setTokenRoyalty(lastCounter, msg.sender, _royaltyValue);
+            _setTokenRoyalty(tokenIdToMint, msg.sender, _royaltyValue);
         }
-        _safeMint(msg.sender, lastCounter);
+        _safeMint(msg.sender, tokenIdToMint);
+
+        emit NFTMinted(tokenIdToMint, msg.sender, _royaltyValue);
     }
 
-    /// @notice transfering NFT asset to another wallet.
-    /// @param _to is the destination address which should not be address(0)
-    /// @param _tokenId is the one of your NFT token's ID that you want to trasnfer.
-    /// @param _data is the encoded message in the transfer function which is forwarded in {IERC721Receiver-onERC721Received} to contract recipients.
+
+/// @notice Transfers an NFT asset to another wallet.
+/// @param _to The destination address, which should not be the zero address (address(0)).
+/// @param _tokenId The ID of the NFT token that you want to transfer.
+/// @param _data The encoded message in the transfer function, which is forwarded to contract recipients in {IERC721Receiver-onERC721Received}.
     function transfer(address _to, uint256 _tokenId, bytes memory _data)
         external
         payable
@@ -264,10 +271,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         emit tokenTransferSucceeded(msg.sender, _to, _tokenId, _data);
     }
 
-    /// @notice only owner of the contract could call this function.
-    /// @notice This function can be called just once.
-    /// @notice to call this function we have to be in the pre-sale phase.
-    /// @dev collection phase is initialy on pre-sale phase, so we don't need to change that.
+    /// @notice Only the owner of the contract can call this function.
+    /// @notice The function must be called during the pre-sale phase.
     function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!preSaled, "ZeroDay__preSaledBefore");
 
@@ -279,9 +284,9 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         emit phaseChanged(PHASE.PRE_SALE);
     }
 
-    /// @notice only owner of the contract could call this function.
-    /// @notice This function can be called just once.
-    /// @notice to call this function we have to be in the Reveal phase.
+    /// @notice Only the owner of the contract can call this function.
+    /// @notice This function can be called only once.
+    /// @notice The function must be called during the Reveal phase.
     function startReveal() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
         require(!revealed, "ZeroDay__ReevaledBefore");
 

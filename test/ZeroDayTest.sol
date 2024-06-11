@@ -151,6 +151,23 @@ contract ZeroDayTest is Test, IZeroDay {
     /*///////////////////////////////////////////////////////////////
                        WHITELIST AND MERKLE TREE
     //////////////////////////////////////////////////////////////*/
+    // @audit should be removed
+    function testWhitelistMint() public changePhaseTo(PHASE.PRE_SALE, true){
+        bytes32[] memory _merkleProof = new bytes32[](4);
+        _merkleProof[0] = merkleProof[0];
+        _merkleProof[1] = merkleProof[1];
+        _merkleProof[2] = merkleProof[2];
+        _merkleProof[3] = merkleProof[3];
+
+        vm.startPrank(whitelistEligibleUser);
+        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
+        nft.whiteListMint(_merkleProof);
+        vm.stopPrank();
+
+        console.log("totalSupply in test: ", nft.totalSupply());
+        console.log(nft.tokenIdMinted(0));
+    }
+
     function testChangeValidMerkleRootWithValidCaller() public {
         bytes32 preMerkleRoot = nft.getMerkleRoot();
         bytes32 newValidMerkleRoot = keccak256(abi.encodePacked("newValidMerkleRoot"));
@@ -189,6 +206,11 @@ contract ZeroDayTest is Test, IZeroDay {
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
+
+        assertTrue(nft.tokenIdMinted(0));
+        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.totalSupply(), 1);
+        assertEq(nft.ownerOf(0), whitelistEligibleUser);
     }
 
     function testFailWhiteListMintWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
@@ -225,12 +247,13 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(whitelistEligibleUser);
-        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
-
-        // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
+
+        assertFalse(nft.tokenIdMinted(0));
+        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.totalSupply(), 0);
     }
 
     function testFailWhiteListMintWithIneligibleMinter() public changePhaseTo(PHASE.PRE_SALE, true) {
@@ -241,9 +264,12 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(invalidCaller);
-        vm.deal(invalidCaller, init_pre_sale_price_example);
+        // vm.deal(invalidCaller, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
+
+        assertFalse(nft.tokenIdMinted(0));
+        assertEq(nft.totalSupply(), 0);
     }
 
     function testFailWhiteListMintWhenPhaseIsLocked() public changePhaseTo(PHASE.PRE_SALE, true) {
@@ -261,6 +287,9 @@ contract ZeroDayTest is Test, IZeroDay {
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
+
+        assertFalse(nft.tokenIdMinted(0));
+        assertEq(nft.totalSupply(), 0);
     }
 
     function testWhiteListMintWhenPhaseBeLockedAndUnlocked() public changePhaseTo(PHASE.PRE_SALE, true) {
@@ -279,8 +308,14 @@ contract ZeroDayTest is Test, IZeroDay {
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
+
+        assertTrue(nft.tokenIdMinted(0));
+        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.totalSupply(), 1);
+        assertEq(nft.ownerOf(0), whitelistEligibleUser);
     }
 
+    
     /*///////////////////////////////////////////////////////////////
                             MINT FUNCTION
     //////////////////////////////////////////////////////////////*/
@@ -293,10 +328,11 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
 
+        uint256 tokenIdMinted = nft.totalSupply() - 1;
         assertEq(nft.totalSupply(), 1);
-        assertTrue(nft.tokenIdMinted(nft.totalSupply()));
+        assertTrue(nft.tokenIdMinted(tokenIdMinted));
 
-        (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(nft.totalSupply(), PUBLIC_SALE_MINT_PRICE);
+        (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(tokenIdMinted, PUBLIC_SALE_MINT_PRICE);
         console.log("Royalty amount: ", royaltyAmount);
         assertEq(royaltyOwner, publicSaleMinter);
         assertEq(royaltyAmount, calculateRoyalty(PUBLIC_SALE_MINT_PRICE));
@@ -349,13 +385,13 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.deal(publicSaleMinter, 1 ether);
         nft.mintNFT{value: 1 ether}(10);
 
-        nft.transfer(destinationUser, 1, "");
+        nft.transfer(destinationUser, 0, "");
         vm.stopPrank();
 
         assertEq(nft.balanceOf(publicSaleMinter), 0);
         assertEq(nft.balanceOf(destinationUser), 1);
-        assertNotEq(nft.ownerOf(1), publicSaleMinter);
-        assertEq(nft.ownerOf(1), destinationUser);
+        assertNotEq(nft.ownerOf(0), publicSaleMinter);
+        assertEq(nft.ownerOf(0), destinationUser);
     }
 
     function testFailTransferWithInvalidCallerAndValidDestination() public changePhaseTo(PHASE.PUBLIC_SALE, true) {
@@ -519,10 +555,10 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.mintNFT{value: PUBLIC_SALE_MINT_PRICE}(ROYALTY_BASIS_POINT_VALUE);
         vm.stopPrank();
 
-        string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/1.json";
-        string memory expectedValueWithIndexTwo = "https://ipfs.io/ipfs/2.json";
-        assertEq(nft.tokenURI(1), expectedValueWithIndexOne);
-        assertEq(nft.tokenURI(2), expectedValueWithIndexTwo);
+        string memory expectedValueWithIndexOne = "https://ipfs.io/ipfs/0.json";
+        string memory expectedValueWithIndexTwo = "https://ipfs.io/ipfs/1.json";
+        assertEq(nft.tokenURI(0), expectedValueWithIndexOne);
+        assertEq(nft.tokenURI(1), expectedValueWithIndexTwo);
     }
 
     /*///////////////////////////////////////////////////////////////
