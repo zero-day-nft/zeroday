@@ -136,6 +136,13 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /*///////////////////////////////////////////////////////////////
                             FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+    fallback() external payable {
+        emit fallbackEmitted(msg.sender);
+    }
+    receive() external payable {
+        emit receiveEmitted(msg.sender);
+    }
+
     /// @param _newMerkleRoot calculated root-hash of merkle-proof off-chain to facilitate the whitelist process
     /// @notice onlyOwner of the contract could call this function.
     function changeMerkleRoot(bytes32 _newMerkleRoot) external onlyOwner {
@@ -166,20 +173,16 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
             revert Errors.ZeroDay__notSufficientBalanceInContractToWithdraw();
         }
 
-        (bool success, bytes memory returnedData) = _target.call{value: _amount}(_data);
+        uint256 amount = (_amount > address(this).balance || _amount == type(uint256).max) 
+            ? address(this).balance : _amount;
+
+        (bool success, bytes memory returnedData) = _target.call{value: amount}(_data);
         if (!success) {
             revert Errors.ZeroDay__withdrawReverted(returnedData);
         }
         emit withdrawSucceeded(address(this), _target, _amount, _data);
     }
 
-    fallback() external payable {
-        emit fallbackEmitted(msg.sender);
-    }
-
-    receive() external payable {
-        emit receiveEmitted(msg.sender);
-    }
 
     /// @param _merkleProof calculated merkle-proof off-chain to facilitate the whitelist process.
     /// @notice Eligible user could call this function to mint his NFT in pre-sale phase.
