@@ -182,6 +182,20 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         }
         emit withdrawSucceeded(address(this), _target, _amount, _data);
     }
+    /** for withdraw >>>>
+     * 
+    function withdrawAll() public onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0);
+
+        _withdraw(owner(), balance);
+    }
+
+    function _withdraw(address _address, uint256 _amount) private {
+        (bool success, ) = _address.call{value: _amount}("");
+        require(success, "Transfer failed.");
+    }
+     <<<<<<*/
 
 
     /// @param _merkleProof calculated merkle-proof off-chain to facilitate the whitelist process.
@@ -216,7 +230,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
             totalMinted++;
         }
 
-        s_tokenIdMinted[tokenIdToMint] = true;
+        s_tokenIdMinted[tokenIdToMint] = true; // like mintNft() u can better than this line
         _safeMint(_minter, tokenIdToMint);
     }
 
@@ -236,8 +250,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     {
         if (msg.value < PUBLIC_SALE_MINT_PRICE) revert Errors.ZeroDay__NotSufficientBalanceToMint();
 
-        uint256 tokenIdToMint = totalSupply();
-        s_tokenIdMinted[tokenIdToMint] = true;
+        uint256 tokenIdToMint = totalSupply(); // totalMinted = totalSupply() . Why did you use it twice when they are equal? // like line 228
+        s_tokenIdMinted[tokenIdToMint] = true; // you can checkthis like :  require(!_exists(tokenId), "ERC721: token already minted"); // _exists(_id) _ownerOf(_id) != address(0);
 
         unchecked {
             totalMinted++;
@@ -250,6 +264,21 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         _safeMint(msg.sender, tokenIdToMint);
 
         emit NFTMinted(tokenIdToMint, msg.sender, _royaltyValue);
+    }
+
+    function OwnerMint(uint256 _count) public {
+        if (!((mintCounter + _count) - 1 < MAX_SUPPLY)) {
+            revert TypeIsOver({
+                TypeNow: (mintCounter + _count) - 1,
+                AllType: MAX_SUPPLY - mintCounter
+            });
+        }
+        if (msg.sender == owner()) {
+            for (uint256 i = 0; i < _count; i++) {
+                _mint(msg.sender, mintCounter);
+            }
+            return;
+        }
     }
 
 
@@ -361,9 +390,16 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
         if (!s_tokenIdMinted[_tokenId]) revert Errors.ZeroDay__thisTokenIdHasNotMinted();
 
-        string memory typeFile = ".json";
+        /* if revealed you need to be show another link 
+        if (revealed){
+            return ("www.mgn.com/upload/notRevealed")
+        }
+        */
+
+        //string memory typeFile = ".json";
         string memory baseURI = _baseURI();
-        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, _tokenId.toString(), typeFile)) : "";
+        //return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, _tokenId.toString(), typeFile)) : "";
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, _tokenId.toString())) : ""; // not need .json in links
     }
 
     function tokenIdMinted(uint256 _tokenId) public view returns (bool) {
