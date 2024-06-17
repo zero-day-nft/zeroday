@@ -28,9 +28,9 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
 
     constructor(
         uint256 init_pre_sale_price,
-        uint256 startPreSaleDate,
-        uint256 startRevealDate,
-        uint256 startPublicSaleDate,
+        uint32 startPreSaleDate,
+        uint32 startRevealDate,
+        uint32 startPublicSaleDate,
         bytes32 _merkleRoot
     ) {
         merkleRoot = keccak256(abi.encodePacked("merkelRoot"));

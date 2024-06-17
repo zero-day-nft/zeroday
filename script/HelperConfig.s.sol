@@ -12,7 +12,7 @@ contract HelperConfig is Script, IHelper {
 
     constructor(bool testnet) {
         if (testnet) {
-            if (block.chainid == 111555111) {
+            if (block.chainid == 11155111) {
                 config = getSepoliaETHNetworkConfig();
             } else if (block.chainid == 0x8274f) {
                 config = getSepoliaScrollNetworkConfig();

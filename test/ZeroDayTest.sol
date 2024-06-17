@@ -12,10 +12,10 @@ contract ZeroDayTest is Test, IZeroDay {
     ZeroDay public nft;
     /// NOTE: these are test values.
     uint256 public constant init_pre_sale_price_example = 1 ether;
-    uint256 public constant start_pre_sale_date_example = 1716718200; // Sunday, May 26, 2024 10:10:00 AM
-    uint256 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
-    uint256 public constant start_public_sale_date_example = 1717063800; //Thursday, May 30, 2024 10:10:00 AM
     uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
+    uint32 public constant start_pre_sale_date_example = 1716718200; // Sunday, May 26, 2024 10:10:00 AM
+    uint32 public constant start_reveal_date_example = 1716977400; // Wednesday, May 29, 2024 10:10:00 AM
+    uint32 public constant start_public_sale_date_example = 1717063800; //Thursday, May 30, 2024 10:10:00 AM
     uint96 public constant ROYALTY_BASIS_POINT_VALUE = 500; // 5% of token Royalty.
     uint96 public constant FEE_DENOMINATOR = 10000; // 100 in basis points.
 
@@ -566,7 +566,7 @@ contract ZeroDayTest is Test, IZeroDay {
     //////////////////////////////////////////////////////////////*/
     function testChangePreSaleDate() public {
         vm.startPrank(owner);
-        uint256 newPreSaleDate = start_pre_sale_date_example + 1 days;
+        uint32 newPreSaleDate = start_pre_sale_date_example + 1 days;
         nft.changePreSaleDate(newPreSaleDate);
         vm.stopPrank();
 
@@ -575,14 +575,14 @@ contract ZeroDayTest is Test, IZeroDay {
 
     function testFailChangePreSaleDateWithSameValue() public {
         vm.startPrank(owner);
-        uint256 newPreSaleDate = start_pre_sale_date_example;
+        uint32 newPreSaleDate = start_pre_sale_date_example;
         nft.changePreSaleDate(newPreSaleDate);
         vm.stopPrank();
     }
 
     function testFailChangePreSaleDateWithInvalidCaller() public {
         vm.startPrank(invalidCaller);
-        uint256 newPreSaleDate = start_pre_sale_date_example + 1 days;
+        uint32 newPreSaleDate = start_pre_sale_date_example + 1 days;
         nft.changePreSaleDate(newPreSaleDate);
         vm.stopPrank();
     }
@@ -590,7 +590,7 @@ contract ZeroDayTest is Test, IZeroDay {
     /// @notice for changing reveal date.
     function testChangeReveal() public {
         vm.startPrank(owner);
-        uint256 newRevealDate = start_reveal_date_example + 1 days;
+        uint32 newRevealDate = start_reveal_date_example + 1 days;
         nft.changeRevealDate(newRevealDate);
         vm.stopPrank();
 
@@ -599,14 +599,14 @@ contract ZeroDayTest is Test, IZeroDay {
 
     function testFailChangeRevealDateWithSameValue() public {
         vm.startPrank(owner);
-        uint256 newRevealDate = start_reveal_date_example;
+        uint32 newRevealDate = start_reveal_date_example;
         nft.changeRevealDate(newRevealDate);
         vm.stopPrank();
     }
 
     function testFailChangeRevealDateWithInvalidCaller() public {
         vm.startPrank(invalidCaller);
-        uint256 newRevealDate = start_reveal_date_example + 1 days;
+        uint32 newRevealDate = start_reveal_date_example + 1 days;
         nft.changePreSaleDate(newRevealDate);
         vm.stopPrank();
     }
@@ -614,7 +614,7 @@ contract ZeroDayTest is Test, IZeroDay {
     /// @notice for changing public-sale date.
     function testChangePublicSale() public {
         vm.startPrank(owner);
-        uint256 newPublicSaleDate = start_public_sale_date_example + 1 days;
+        uint32 newPublicSaleDate = start_public_sale_date_example + 1 days;
         nft.changePublicSaleDate(newPublicSaleDate);
         vm.stopPrank();
 
@@ -623,14 +623,14 @@ contract ZeroDayTest is Test, IZeroDay {
 
     function testFailChangePublicSaleWithSameValue() public {
         vm.startPrank(owner);
-        uint256 newPublicSaleDate = start_public_sale_date_example;
+        uint32 newPublicSaleDate = start_public_sale_date_example;
         nft.changePublicSaleDate(newPublicSaleDate);
         vm.stopPrank();
     }
 
     function testFailChangePublicSaleDateWithInvalidCaller() public {
         vm.startPrank(invalidCaller);
-        uint256 newPublicSaleDate = start_public_sale_date_example + 1 days;
+        uint32 newPublicSaleDate = start_public_sale_date_example + 1 days;
         nft.changePublicSaleDate(newPublicSaleDate);
         vm.stopPrank();
     }

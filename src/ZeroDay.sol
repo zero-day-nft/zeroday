@@ -6,12 +6,9 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IZeroDay} from "./interfaces/IZeroDay.sol";
 import {Errors} from "./libraries/Errors.sol";
-import {console} from "forge-std/console.sol";
 
 // ▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
 // ▐ ________  _______   ________  ________          ________  ________      ___    ___ ▌
@@ -43,11 +40,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice is the price of NFTs in pre-sale phase.
     uint256 public immutable init_pre_sale_price;
     /// @notice is a date in block.timestamp which pre-sale phase starts.
-    uint256 private startPreSaleDate;
+    uint32 private startPreSaleDate;
     /// @notice is a date that collection reveal will occur.
-    uint256 private startRevealDate;
+    uint32 private startRevealDate;
     /// @notice is a date in block.timestamp which public-sale phase starts.
-    uint256 private startPublicSaleDate;
+    uint32 private startPublicSaleDate;
 
     /// @notice is the current phase that we are in, based on PHASE enum.
     PHASE private collection_phase;
@@ -92,9 +89,9 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @dev Setting defualt royalty to this contract's address for artists who don't use royalty for their arts.
     constructor(
         uint256 _init_pre_sale_price,
-        uint256 _startPreSaleDate,
-        uint256 _startRevealDate,
-        uint256 _startPublicSaleDate,
+        uint32 _startPreSaleDate,
+        uint32 _startRevealDate,
+        uint32 _startPublicSaleDate,
         bytes32 _merkle_root
     ) payable ERC721("ZeroDay", "ZERO") Ownable(msg.sender) {
         init_pre_sale_price = _init_pre_sale_price;
@@ -319,7 +316,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice Changes the pre-defined pre-sale date if necessary.
     /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
     /// @param _newPreSaleDate The new pre-sale date to be set.
-    function changePreSaleDate(uint256 _newPreSaleDate) external onlyOwner {
+    function changePreSaleDate(uint32 _newPreSaleDate) external onlyOwner {
         if (startPreSaleDate == _newPreSaleDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startPreSaleDate = _newPreSaleDate;
     }
@@ -327,7 +324,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice Changes the pre-defined Reveal date if necessary.
     /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
     /// @param _newRevealDate The new Reveal date to be set.
-    function changeRevealDate(uint256 _newRevealDate) external onlyOwner {
+    function changeRevealDate(uint32 _newRevealDate) external onlyOwner {
         if (startRevealDate == _newRevealDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startRevealDate = _newRevealDate;
     }
@@ -335,7 +332,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice Changes the pre-defined public sale date if necessary.
     /// @notice This function can only be called by the contract owner and does not affect the decentralization rule.
     /// @param _newPublicSaleDate The new public sale date to be set.
-    function changePublicSaleDate(uint256 _newPublicSaleDate) external onlyOwner {
+    function changePublicSaleDate(uint32 _newPublicSaleDate) external onlyOwner {
         if (startPublicSaleDate == _newPublicSaleDate) revert Errors.ZeroDay__newDateIsAsSameAsOldOne();
         startPublicSaleDate = _newPublicSaleDate;
     }
@@ -403,15 +400,15 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         return publicSaled;
     }
 
-    function getStartPreSaleDate() public view returns (uint256) {
+    function getStartPreSaleDate() public view returns (uint32) {
         return startPreSaleDate;
     }
 
-    function getStartRevealDate() public view returns (uint256) {
+    function getStartRevealDate() public view returns (uint32) {
         return startRevealDate;
     }
 
-    function getStartPublicSaleDate() public view returns (uint256) {
+    function getStartPublicSaleDate() public view returns (uint32) {
         return startPublicSaleDate;
     }
 }
