@@ -53,13 +53,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice is the root-hash of merkle tree which calculated off-chain.
     bytes32 private s_merkleRoot;
 
-    /// @notice preSaled is done or not.
-    bool private preSaled;
-    /// @notice reveal phase is done or not.
-    bool private revealed;
-    /// @notice publicSaled is done or not.
-    bool private publicSaled;
-
     /// @notice this boolean is used to change the useability of functions relatedt to a phase.
     bool private phaseLocked;
     /*///////////////////////////////////////////////////////////////
@@ -67,7 +60,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     //////////////////////////////////////////////////////////////*/
     /// @notice id minter minted his NFT in pre-sale phase, it's value will be true.
     mapping(address minter => bool included) private s_whiteListClaimed;
-    mapping(uint256 tokenId => bool minted) private s_tokenIdMinted;
 
     event tokenTransferSucceeded(address indexed from, address indexed to, uint256 indexed tokenId, bytes data);
     event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
@@ -193,9 +185,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         if (_merkleProof.length == 0) revert Errors.ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert Errors.ZeroDay__AlreadyMintedInWhiteList();
 
-        s_whiteListClaimed[msg.sender] = true;  
         _whiteListMint(_merkleProof, msg.sender);
-
+        
         emit MintedInWhiteList(msg.sender);
     }
 
@@ -212,8 +203,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         unchecked {
             totalMinted++;
         }
-
-        s_tokenIdMinted[tokenIdToMint] = true;
+        
+        s_whiteListClaimed[msg.sender] = true;
         _safeMint(_minter, tokenIdToMint);
     }
 
@@ -234,7 +225,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         if (msg.value < PUBLIC_SALE_MINT_PRICE) revert Errors.ZeroDay__NotSufficientBalanceToMint();
 
         uint256 tokenIdToMint = totalSupply();
-        s_tokenIdMinted[tokenIdToMint] = true;
 
         unchecked {
             totalMinted++;
@@ -272,12 +262,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice This function can be called only once.
     /// @notice to call this function we have to be in the PRE_SALED phase in terms of time and in the NOT_STARTED in terms of current phase.
     function startPreSale() external onlyOwner shouldBeInThePhaseOf(PHASE.NOT_STARTED) {
-        require(!preSaled, "ZeroDay__preSaledBefore");
+        // require(!preSaled, "ZeroDay__preSaledBefore");
 
         if (!(timeStamp() >= startPreSaleDate && timeStamp() < startRevealDate)) {
             revert Errors.ZeroDay__PreSaleDateNotReached();
         }
-        preSaled = true;
         collection_phase = PHASE.PRE_SALE;
 
         emit phaseChanged(PHASE.PRE_SALE);
@@ -287,12 +276,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice This function can be called only once.
     /// @notice to call this function we have to be in the REVEAL phase in terms of time and in the PRE_SALE in terms of current phase.
     function startReveal() external onlyOwner shouldBeInThePhaseOf(PHASE.PRE_SALE) {
-        require(!revealed, "ZeroDay__ReevaledBefore");
+        // require(!revealed, "ZeroDay__ReevaledBefore");
 
         if (!(timeStamp() >= startRevealDate && timeStamp() < startPublicSaleDate)) {
             revert Errors.ZeroDay__RevealDateNotReached();
         }
-        revealed = true;
         collection_phase = PHASE.REVEAL;
 
         emit phaseChanged(PHASE.REVEAL);
@@ -302,12 +290,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice This function can be called just once.
     /// @notice to call this function we have to be in the public-sale phase in terms of time and in the REVEAL in terms of current phase.
     function startPublicSale() external onlyOwner shouldBeInThePhaseOf(PHASE.REVEAL) {
-        require(!publicSaled, "ZeroDay__publicSaledBefore");
+        // require(!publicSaled, "ZeroDay__publicSaledBefore");
 
         if (!(timeStamp() >= startPublicSaleDate)) {
             revert Errors.ZeroDay__PublicSaleDateNotReached();
         }
-        publicSaled = true;
         collection_phase = PHASE.PUBLIC_SALE;
 
         emit phaseChanged(PHASE.PUBLIC_SALE);
@@ -356,15 +343,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @param _tokenId The tokenId of the NFT for which you want the tokenURI.
     /// @return tokenURI A string representing the tokenURI.
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
-        if (!s_tokenIdMinted[_tokenId]) revert Errors.ZeroDay__thisTokenIdHasNotMinted();
+        if (ownerOf(_tokenId) == address(0x0)) revert Errors.ZeroDay__thisTokenIdHasNotMinted();
 
         string memory typeFile = ".json";
         string memory baseURI = _baseURI();
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, _tokenId.toString(), typeFile)) : "";
-    }
-
-    function tokenIdMinted(uint256 _tokenId) public view returns (bool) {
-        return s_tokenIdMinted[_tokenId];
     }
 
     function getWhiteListMinterStatus(address _minter) public view returns (bool) {
@@ -386,18 +369,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice there is no time-overflow until 2106 AC.
     function timeStamp() private view returns (uint32) {
         return uint32(block.timestamp);
-    }
-
-    function getRevealed() public view returns (bool) {
-        return revealed;
-    }
-
-    function getPreSaled() public view returns (bool) {
-        return preSaled;
-    }
-
-    function getPublicSaled() public view returns (bool) {
-        return publicSaled;
     }
 
     function getStartPreSaleDate() public view returns (uint32) {

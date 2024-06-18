@@ -62,7 +62,8 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
         assertGe(maxSupply, tokenCounter);
         assertEq(getStatus(), "PUBLIC_SALE");
         if (tokenCounter != 0) {
-            assertTrue(nft.tokenIdMinted(nft.totalSupply()));
+            // assertTrue(nft.tokenIdMinted(nft.totalSupply()));
+            assertEq(nft.ownerOf(nft.totalSupply()), publicSaleMinter);
         }
 
         if (tokenCounter != 0) {

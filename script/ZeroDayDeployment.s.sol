@@ -25,10 +25,10 @@ contract ZeroDayDeployement is Script, IHelper {
     function run() public {
         // merkleRoot = keccak256(abi.encodePacked("merkleRoot"));
         merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;
-        bool onTestnet = false;
+        bool onTestnet = true;
 
-        // vm.chainId(11155111); // ETH Mainnet chainId
-        vm.chainId(1);
+        vm.chainId(11155111); // ETH Mainnet chainId
+        // vm.chainId(1);
 
         helper = new HelperConfig(onTestnet);
         config = helper.getConfig();

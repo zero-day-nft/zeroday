@@ -165,7 +165,6 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.stopPrank();
 
         console.log("totalSupply in test: ", nft.totalSupply());
-        console.log(nft.tokenIdMinted(0));
     }
 
     function testChangeValidMerkleRootWithValidCaller() public {
@@ -207,10 +206,12 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
 
-        assertTrue(nft.tokenIdMinted(0));
-        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.ownerOf(0), whitelistEligibleUser);
         assertEq(nft.totalSupply(), 1);
         assertEq(nft.ownerOf(0), whitelistEligibleUser);
+
+        vm.expectRevert();
+        nft.ownerOf(1);
     }
 
     function testFailWhiteListMintWithInvalidPhase() public changePhaseTo(PHASE.REVEAL, true) {
@@ -251,8 +252,8 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
 
-        assertFalse(nft.tokenIdMinted(0));
-        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.ownerOf(0), address(0x0));
+        assertEq(nft.ownerOf(1), address(0x0));
         assertEq(nft.totalSupply(), 0);
     }
 
@@ -268,7 +269,7 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
 
-        assertFalse(nft.tokenIdMinted(0));
+        assertEq(nft.ownerOf(0), address(0x0));
         assertEq(nft.totalSupply(), 0);
     }
 
@@ -288,7 +289,7 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
 
-        assertFalse(nft.tokenIdMinted(0));
+        assertEq(nft.ownerOf(0), address(0x0));
         assertEq(nft.totalSupply(), 0);
     }
 
@@ -309,10 +310,11 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.whiteListMint(_merkleProof);
         vm.stopPrank();
 
-        assertTrue(nft.tokenIdMinted(0));
-        assertFalse(nft.tokenIdMinted(1));
+        assertEq(nft.ownerOf(0), whitelistEligibleUser);
         assertEq(nft.totalSupply(), 1);
         assertEq(nft.ownerOf(0), whitelistEligibleUser);
+        vm.expectRevert();
+        nft.ownerOf(1);
     }
 
     
@@ -330,7 +332,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         uint256 tokenIdMinted = nft.totalSupply() - 1;
         assertEq(nft.totalSupply(), 1);
-        assertTrue(nft.tokenIdMinted(tokenIdMinted));
+        assertEq(nft.ownerOf(tokenIdMinted), publicSaleMinter);
 
         (address royaltyOwner, uint256 royaltyAmount) = nft.royaltyInfo(tokenIdMinted, PUBLIC_SALE_MINT_PRICE);
         console.log("Royalty amount: ", royaltyAmount);
@@ -438,10 +440,6 @@ contract ZeroDayTest is Test, IZeroDay {
         nft.startPreSale();
         vm.stopPrank();
 
-        assertTrue(nft.getPreSaled());
-        assertFalse(nft.getRevealed());
-        assertFalse(nft.getPublicSaled());
-
         assertEq(getStatus(), "PRE_SALE");
     }
 
@@ -471,9 +469,6 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.stopPrank();
 
         console.log(getStatus());
-        assertTrue(nft.getPreSaled());
-        assertTrue(nft.getRevealed());
-        assertFalse(nft.getPublicSaled());
         assertEq(getStatus(), "REVEAL");
     }
 
@@ -508,10 +503,6 @@ contract ZeroDayTest is Test, IZeroDay {
         vm.startPrank(owner);
         nft.startPublicSale();
         vm.stopPrank();
-
-        assertTrue(nft.getPreSaled());
-        assertTrue(nft.getRevealed());
-        assertTrue(nft.getPublicSaled());
 
         assertEq(getStatus(), "PUBLIC_SALE");
     }
