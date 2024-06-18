@@ -9,6 +9,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import {IZeroDay} from "./interfaces/IZeroDay.sol";
 import {Errors} from "./libraries/Errors.sol";
+import { console } from "forge-std/console.sol";
 
 // ▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
 // ▐ ________  _______   ________  ________          ________  ________      ___    ___ ▌
@@ -195,6 +196,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice This function follows the Checks-Effects-Interactions (CEI) pattern.
     function _whiteListMint(bytes32[] memory _merkleProof, address _minter, uint256 _amount) internal {
         bytes32 leaf = keccak256(abi.encodePacked(_minter, _amount));
+        console.logBytes32(leaf);
 
         if (!MerkleProof.verify(_merkleProof, s_merkleRoot, leaf)) {
             revert Errors.ZeroDay__UserNotIncludedInWhiteList(_minter);
