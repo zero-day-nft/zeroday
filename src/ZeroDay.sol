@@ -175,7 +175,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     /// @param _merkleProof calculated merkle-proof off-chain to facilitate the whitelist process.
     /// @notice Eligible user could call this function to mint his NFT in pre-sale phase.
-    function whiteListMint(bytes32[] memory _merkleProof)
+    function whiteListMint(bytes32[] memory _merkleProof, uint256 _amount)
         external
         nonReentrant
         shouldBeInThePhaseOf(PHASE.PRE_SALE)
@@ -185,7 +185,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         if (_merkleProof.length == 0) revert Errors.ZeroDay__MerkleProofHashesAreEmpty();
         if (s_whiteListClaimed[msg.sender]) revert Errors.ZeroDay__AlreadyMintedInWhiteList();
 
-        _whiteListMint(_merkleProof, msg.sender);
+        _whiteListMint(_merkleProof, msg.sender, _amount);
         
         emit MintedInWhiteList(msg.sender);
     }
@@ -193,8 +193,8 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @param _merkleProof An array of hashes that are calculated off-chain.
     /// @param _minter The address to be verified as included in the Merkle proof.
     /// @notice This function follows the Checks-Effects-Interactions (CEI) pattern.
-    function _whiteListMint(bytes32[] memory _merkleProof, address _minter) internal {
-        bytes32 leaf = keccak256(abi.encodePacked(_minter));
+    function _whiteListMint(bytes32[] memory _merkleProof, address _minter, uint256 _amount) internal {
+        bytes32 leaf = keccak256(abi.encodePacked(_minter, _amount));
 
         if (!MerkleProof.verify(_merkleProof, s_merkleRoot, leaf)) {
             revert Errors.ZeroDay__UserNotIncludedInWhiteList(_minter);

@@ -21,6 +21,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
     address owner = address(this);
     address whitelistEligibleUser = 0x742d35Cc6634C0532925a3b844Bc454e4438f44e;
+    uint256 public constant whiteListEligibleUserAmountToMint = 1;
     address whitelistIneligibleUser = makeAddr("whitelistIneligibleUser");
     address whitelistValidMinter = makeAddr("whitelistValidMinter");
     address publicSaleMinter = makeAddr("publicSaleMinter");
@@ -33,12 +34,30 @@ contract ZeroDayTest is Test, IZeroDay {
     event withdrawSucceeded(address indexed from, address indexed to, uint256 indexed amount, bytes data);
 
     function setUp() public {
-        merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;
-        merkleProof[0] = 0xa69fd875c9047246a750cc12567913f038f3144aeefb7459848b7565ff9645d0;
-        merkleProof[1] = 0x56a1dbfaf5416eb50380994c57a8535b15adb6c8edc6d64da3594dfc518ab3af;
-        merkleProof[2] = 0x87acfff99b30e45716d955a60ddb927f721345ca0f172494ff3478c7b57631ca;
-        merkleProof[3] = 0xeb5884281b10e8766520b42f906cb9965dd04735122d5e52280ec42342d9155c;
+        // merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;
+        // merkleProof[0] = 0xa69fd875c9047246a750cc12567913f038f3144aeefb7459848b7565ff9645d0;
+        // merkleProof[1] = 0x56a1dbfaf5416eb50380994c57a8535b15adb6c8edc6d64da3594dfc518ab3af;
+        // merkleProof[2] = 0x87acfff99b30e45716d955a60ddb927f721345ca0f172494ff3478c7b57631ca;
+        // merkleProof[3] = 0xeb5884281b10e8766520b42f906cb9965dd04735122d5e52280ec42342d9155c;
 
+        /// @notice these merkleProofs and merkle root are based on this assumed data.
+        /// [{"address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "number": 1},
+        /// {"address": "0x267be1c1d684f78cb4f6a176c4911b741e4ffdc0", "number": 2},
+        /// {"address": "0x53d284357ec70ce289d6d64134dfac8e511c8a3d", "number": 3},
+        /// {"address": "0x6f46cf5569aefa1acc1009290c8e043747172d89", "number": 4},
+        /// {"address": "0xdc76cd25977e0a5ae17155770273ad58648900d3", "number": 5},
+        /// {"address": "0x61edcdf5bb737adffe5043706e7c5bb1f1a56eea", "number": 6},
+        /// {"address": "0xf27daff52c38b2c373ad2b9392652ddf433303c4", "number": 7},
+        /// {"address": "0xe853c56864a2ebe4576a807d26fdc4a0ada51919", "number": 8},
+        /// {"address": "0xebf8e2ac090b18ec008c40a0a98d8f30e1a26d95", "number": 9},
+        /// {"address": "0x6fc82a5fe25a5cdb58bc74600a40a69c065263f8", "number": 10}]
+        
+        merkleRoot = 0x69a7ee6992f0464f5e35570e3d298ae638f365c876f96de015cbc765b5d5b5f3;
+        merkleProof[0] = 0xabdcfd8a010d784dcd0a7191c4ffef352d6827d46b1373886ee49db61b6a3b47;
+        merkleProof[1] = 0xb601fc8b1b125002a77735555566316a96da751f870207a136f3d2e05f8d49ef;
+        merkleProof[2] = 0xed6672596878d5616b4dfd3292dbf301b7e1fc21e6d2d73bbc34196810410024;
+        merkleProof[3] = 0x669411211e4b01f07e1bf8dc996f6dc112c1d3ae8658f8588a73fdc0741e27f6;
+         
         vm.startPrank(owner);
         nft = new ZeroDay(
             init_pre_sale_price_example,
@@ -161,7 +180,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(whitelistEligibleUser);
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         console.log("totalSupply in test: ", nft.totalSupply());
@@ -203,7 +222,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(whitelistEligibleUser);
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), whitelistEligibleUser);
@@ -223,7 +242,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(whitelistEligibleUser);
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
     }
 
@@ -248,8 +267,8 @@ contract ZeroDayTest is Test, IZeroDay {
         _merkleProof[3] = merkleProof[3];
 
         vm.startPrank(whitelistEligibleUser);
-        nft.whiteListMint(_merkleProof);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), address(0x0));
@@ -266,7 +285,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(invalidCaller);
         // vm.deal(invalidCaller, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), address(0x0));
@@ -286,7 +305,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(whitelistEligibleUser);
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), address(0x0));
@@ -307,7 +326,7 @@ contract ZeroDayTest is Test, IZeroDay {
 
         vm.startPrank(whitelistEligibleUser);
         // vm.deal(whitelistEligibleUser, init_pre_sale_price_example);
-        nft.whiteListMint(_merkleProof);
+        nft.whiteListMint(_merkleProof, whiteListEligibleUserAmountToMint);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), whitelistEligibleUser);
