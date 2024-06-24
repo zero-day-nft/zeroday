@@ -9,7 +9,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import {ERC721Royalty} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import {IZeroDay} from "./interfaces/IZeroDay.sol";
 import {Errors} from "./libraries/Errors.sol";
-import { console } from "forge-std/console.sol";
+
 
 // ▐▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▌
 // ▐ ________  _______   ________  ________          ________  ________      ___    ___ ▌
@@ -22,7 +22,7 @@ import { console } from "forge-std/console.sol";
 // ▐                                                                       \|___|/      ▌
 // ▐▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▌
 /// @title ZeroDay
-/// @author Parsa Aminpour
+/// @author Parsa Aminpour (https://github.com/ParsaAminpour)
 /// @notice ZeroDay NFT collection
 /// @notice A robust ERC721-based NFT smart contract featuring phased sales,
 ///     Merkle tree whitelisting, and built-in royalty management
@@ -56,6 +56,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
 
     /// @notice this boolean is used to change the useability of functions relatedt to a phase.
     bool private phaseLocked;
+
     /*///////////////////////////////////////////////////////////////
                                MAPPINGS
     //////////////////////////////////////////////////////////////*/
@@ -99,7 +100,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     }
 
     /*///////////////////////////////////////////////////////////////
-                            FUNCTIONS
+                            MODIFIERS
     //////////////////////////////////////////////////////////////*/
     modifier isLessThanMaxSupply() {
         if (totalSupply() + 1 > COLLECTION_MAX_SUPPLY) {
@@ -171,7 +172,9 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     }
 
 
-    /// @param _merkleProof calculated merkle-proof off-chain to facilitate the whitelist process.
+    /// @param _merkleProof Calculated merkle-proof off-chain to facilitate the whitelist process.
+    /// @param _amount The number of tokens an eligible user intends to mint during the whitelist phase.
+    ///     Each eligible user has a pre-defined amount they are allowed to mint, and they can only mint in that specified limit.
     /// @notice Eligible user could call this function to mint his NFT in pre-sale phase.
     function whiteListMint(bytes32[] memory _merkleProof, uint256 _amount)
         external
@@ -225,7 +228,7 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     {
         if (msg.value < PUBLIC_SALE_MINT_PRICE) revert Errors.ZeroDay__NotSufficientBalanceToMint();
 
-        uint256 tokenIdToMint = totalSupply();
+        uint256 tokenIdToMint = totalMinted;
 
         unchecked {
             totalMinted++;
@@ -238,6 +241,26 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         _safeMint(msg.sender, tokenIdToMint);
 
         emit NFTMinted(tokenIdToMint, msg.sender, _royaltyValue);
+    }
+
+
+    /// @notice mint function facilitated for the collection's team.
+    /// @notice this function is callable only via the owner of the collection.
+    /// @param _amount The number of tokens for mint.
+    function teamMint(uint256 _amount) 
+        public 
+        nonReentrant
+        onlyOwner
+        isLessThanMaxSupply
+    {
+        uint256 tokenIdToMint = totalMinted;
+        unchecked {
+            totalMinted += _amount;
+        }   
+
+        for (uint256 i = 0; i < _amount; i++) {
+            _safeMint(msg.sender, tokenIdToMint + i);
+        }
     }
 
 
