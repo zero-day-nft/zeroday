@@ -15,13 +15,12 @@ contract ZeroDayDeployement is Script, IHelper {
     ZeroDay public collection;
 
     // @audit THESE VALUES ARE NOT VALID, CHANGE THEM BEFORE DEPLOYING ON MAINNET.//////////////////
-    uint256 public constant init_pre_sale_price_example = 0.1 ether;
     uint32 public constant start_pre_sale_date_example = 1718203812; // Wednesday, June 12, 2024 2:50:12 PM
     uint32 public constant start_reveal_date_example = 1720795812; // Friday, July 12, 2024 2:50:12 PM
     uint32 public constant start_public_sale_date_example = 1723474212; // Monday, August 12, 2024 2:50:12 PM
     bytes32 public merkleRoot;
     //////////////////////////////////////// INVALID VALUES ////////////////////////////////////////
-
+    
     function run() public {
         // merkleRoot = keccak256(abi.encodePacked("merkleRoot"));
         merkleRoot = 0x3ef3c37222a4ae25c73bbf9074ed6bca833ca17ab10d3ea209fa3a316598e31b;
@@ -35,7 +34,6 @@ contract ZeroDayDeployement is Script, IHelper {
 
         vm.startBroadcast(config.deployerKey);
         collection = new ZeroDay(
-            init_pre_sale_price_example,
             start_pre_sale_date_example,
             start_reveal_date_example,
             start_public_sale_date_example,

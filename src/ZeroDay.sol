@@ -34,12 +34,12 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     //////////////////////////////////////////////////////////////*/
 
     uint256 public constant COLLECTION_MAX_SUPPLY = 9983;
-    // @audit-info this sould change based on the team decission.
+    // @audit-info this sould change based on the team decission - pre sale phase won't have any price.
+    /// @notice is the price of NFTs in pre-sale phase.
+    uint256 public constant init_pre_sale_price = 0.7 ether;
+    /// @notice is the proce of NFTs in public-sale phase.
     uint256 public constant PUBLIC_SALE_MINT_PRICE = 1 ether;
 
-    // @audit-info we should define these values seperately based on the team plan.
-    /// @notice is the price of NFTs in pre-sale phase.
-    uint256 public immutable init_pre_sale_price;
     /// @notice is a date in block.timestamp which pre-sale phase starts.
     uint32 private startPreSaleDate;
     /// @notice is a date that collection reveal will occur.
@@ -72,7 +72,6 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     event fallbackEmitted(address caller);
     event receiveEmitted(address caller);
 
-    /// @param _init_pre_sale_price is the price of NFTs in pre-sale phase.
     /// @param _startPreSaleDate is the time that pre-sale should start.
     /// @param _startRevealDate is the time that reveal phase should start.
     /// @param _startPublicSaleDate is the time that public sale phase should start.
@@ -81,13 +80,11 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice owner accessability restricted to managing phase that we are in, not manipulating critical functionlaities.
     /// @dev Setting defualt royalty to this contract's address for artists who don't use royalty for their arts.
     constructor(
-        uint256 _init_pre_sale_price,
         uint32 _startPreSaleDate,
         uint32 _startRevealDate,
         uint32 _startPublicSaleDate,
         bytes32 _merkle_root
     ) payable ERC721("ZeroDay", "ZERO") Ownable(msg.sender) {
-        init_pre_sale_price = _init_pre_sale_price;
         startPreSaleDate = _startPreSaleDate;
         startPublicSaleDate = _startPublicSaleDate;
         startRevealDate = _startRevealDate;
@@ -196,18 +193,20 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
     /// @notice This function follows the Checks-Effects-Interactions (CEI) pattern.
     function _whiteListMint(bytes32[] memory _merkleProof, address _minter, uint256 _amount) internal {
         bytes32 leaf = keccak256(abi.encodePacked(_minter, _amount));
-        console.logBytes32(leaf);
 
         if (!MerkleProof.verify(_merkleProof, s_merkleRoot, leaf)) {
             revert Errors.ZeroDay__UserNotIncludedInWhiteList(_minter);
         }
-        uint256 tokenIdToMint = totalMinted;
-        unchecked {
-            totalMinted++;
-        }
         
         s_whiteListClaimed[msg.sender] = true;
-        _safeMint(_minter, tokenIdToMint);
+        uint256 tokenIdToMint = totalMinted;
+        unchecked {
+            totalMinted += _amount;
+        }
+
+        for (uint256 i = 0; i < _amount; i++) {
+            _safeMint(_minter, tokenIdToMint + i);
+        }
     }
 
     /// @notice This function can be called during the public sale phase.

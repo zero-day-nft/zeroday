@@ -27,7 +27,6 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
     bytes32 public merkleRoot;
 
     constructor(
-        uint256 init_pre_sale_price,
         uint32 startPreSaleDate,
         uint32 startRevealDate,
         uint32 startPublicSaleDate,
@@ -36,7 +35,12 @@ contract InvariantInUse is StdInvariant, Test, IZeroDay {
         merkleRoot = keccak256(abi.encodePacked("merkelRoot"));
 
         vm.startPrank(owner);
-        nft = new ZeroDay(init_pre_sale_price, startPreSaleDate, startRevealDate, startPublicSaleDate, _merkleRoot);
+        nft = new ZeroDay(
+            startPreSaleDate, 
+            startRevealDate, 
+            startPublicSaleDate, 
+            _merkleRoot
+        );
         vm.stopPrank();
         count = 0;
     }

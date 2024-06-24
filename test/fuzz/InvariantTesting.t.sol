@@ -13,7 +13,7 @@ import {InvariantInUse} from "./InvariantInUse.sol";
 contract InvarianTesting is StdInvariant, Test, IZeroDay {
     string public tokenURIHash = "bafybeibc5sgo2plmjkq2tzmhrn54bk3crhnc23zd2msg4ea7a4pxrkgfna";
     ZeroDay public nft;
-    uint256 public constant init_pre_sale_price_example = 1 ether;
+    uint256 public constant init_pre_sale_price_example = 0.7 ether;
     uint32 public constant start_pre_sale_date_example = 1743493497; // Tuesday, April 1, 2025 7:44:57 AM
     uint32 public constant start_reveal_date_example = 1746085497; // Thursday, May 1, 2025 7:44:57 AM
     uint32 public constant start_public_sale_date_example = 1748763897; //Sunday, June 1, 2025 7:44:57 AM
@@ -33,7 +33,6 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
 
         vm.startPrank(owner);
         nft = new ZeroDay(
-            init_pre_sale_price_example,
             start_pre_sale_date_example,
             start_reveal_date_example,
             start_public_sale_date_example,
@@ -42,7 +41,6 @@ contract InvarianTesting is StdInvariant, Test, IZeroDay {
         vm.stopPrank();
 
         handler = new InvariantInUse(
-            init_pre_sale_price_example,
             start_pre_sale_date_example,
             start_reveal_date_example,
             start_public_sale_date_example,
