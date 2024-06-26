@@ -165,9 +165,10 @@ contract ZeroDay is ERC721Royalty, ReentrancyGuard, Ownable, IZeroDay /*ERC721Bu
         uint256 amount = _amount == type(uint256).max ? address(this).balance : _amount;
 
         (bool success, bytes memory returnedData) = _target.call{value: amount}(_data);
-        if (!success) {
+        if (!success && (returnedData.length != 0 || !abi.decode(returnedData, (bool)))) {
             revert Errors.ZeroDay__withdrawReverted(returnedData);
         }
+
         emit withdrawSucceeded(address(this), _target, _amount, _data);
     }
 
